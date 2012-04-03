@@ -1,0 +1,233 @@
+fs = require 'fs'
+util = require 'util'
+parse = require('./parse').parseFile
+
+parse 'exprs.eth', (err, tree) ->
+        log tree
+
+
+eq  = (x,y) -> JSON.stringify(x) is JSON.stringify(y)
+Array::put  = Array::unshift
+Array::take = Array::shift
+
+log = (n) ->
+        console.log util.inspect n, false, null
+
+# env :: { macros: { id: expander }, bindings: [str] }
+
+###
+
+(macro swap
+        (x y) ((-> (tmp)
+                   (:= x y)
+                   (:= y tmp)) x)
+
+
+# simple expansion
+{ macros [] bindings ['tmp']} # env
+
+(swap tmp other) # source
+
+(x y) # bindings
+
+# make replacements (stack)
+[{x tmp}  {y  other}]
+# check replacements:
+# rule - tmp is already in bindings, so add a replacer for it (same, but with +_)
+# at top of replacer stack (could be done at destructuring stage)
+[{tmp tmp_}  {x tmp}  {y  other}]
+
+# now apply to expr
+((-> (tmp_)
+     (:= tmp other)
+     (:= other tmp_)) tmp)
+
+
+
+((-> (tmp other)
+  (swap tmp other)
+  [tmp other])
+  5 6)
+
+
+# make sure to collect bindings in functions too - not just in :=, =
+((-> (tmp other)  # env = [tmp other]
+
+  # (swap tmp other) -- replacers = [{tmp tmp_}  {x tmp}  {y  other}]
+  ((-> (tmp)
+         (:= x y)
+         (:= y tmp)) x)
+
+  [tmp other])
+  5 6)
+
+((-> (tmp other)
+  # replace: [{tmp tmp_}  {x tmp}  {y  other}]
+  ((-> (tmp_)
+         (:= tmp other)
+         (:= other tmp_)) tmp)
+  [tmp other])
+  5 6)
+
+          # expansion done. try an eval:
+          ((-> (tmp_)
+                 (:= tmp 6)
+                 (:= other tmp_)) 5)
+          [tmp other])
+
+          (:= tmp 6)
+          (:= other 5)
+          [tmp other])
+
+          [6 5]
+
+# pattern matching (works on exprs)
+#
+(expand x
+        1
+        x)
+
+        1
+
+(expand (x ... (... y))    # pattern
+        (f (1 2 3) (3 4))  # source
+        (z ... (... y) x)) # replacement
+                           # env is closed over, don't need to pass in each call
+
+(expand (... (... y))
+        ((1 2 3) (3 4))
+        (... (... y) (replace x f env))) # make sure replacement doesnt conflict with env
+
+
+# ... collects until source pattern changes or no more source patterns to collect
+
+(expand (... (x) z)
+        ((1) (2) (3) 4)
+        (z ... (x) 1))
+
+        # close over params that don't change
+
+# expand many in pos, keeping track of pre and post
+(expandmany ((x))       # this patt -> what is checked against for all source elems
+        (z)             # rest of parent
+        ((1) (2) (3) 4) # remaining source
+        (z)             # before this in template
+        ()              # this in template
+        (1)             # after this in template
+        )
+
+(expandmany ((x))
+        (z)
+        ((2) (3) 4)
+        (z)
+        ((1))
+        (1))
+
+(expandmany ((x))
+        (z)
+        ((3) 4)
+        (z)
+        ((1) (2)) # push onto end (use replace)
+        (1))
+
+(expandmany ((x))
+        (z)
+        (4)
+        (z)
+        ((1) (2) (3))
+        (1))
+
+# if source empty, or source no match, return to normal expand
+(expand (z)
+        (4)
+        (++ (z) ((1) (2) (3)) (1)))
+
+(expand (z)
+        (4)
+        (z (1) (2) (3) 1))
+
+(expand ()
+        ()
+        (4 (1) (2) (3) 1))
+
+(4 (1) (2) (3) 1)
+
+
+# expand and expandmany are loopinf funcs that may call each other recursively
+# 
+(expand (f ... (... n) g)
+        (1 (2 3) (4) 5)
+        (g f ... (... n)))
+
+# when something is replaced, you have to take it out of
+# the things to replace, but keep its position
+# to prevent clashes i.e. f->g, g->h = f->h (must stay f->g)
+
+(expand (f ... (... n) g)
+        (1 (2 3) (4) 5)
+        ()
+        (g f ... (... n))
+        ())    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# atom macros? (if 1 pattern)
+(~~ args (. [] slice call arguments))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# match / destructure :: sourceexpr, pattexpr, bindings -> bindings or false
+# must match all in pattexpr
+(destructure
+   ["id" "key" "val"] # pattern (list of exprs)
+   ["wat" "ok" "2"]   # source
+   []                 # replacers
+)
+
+
+# if both atom, accumulate replacers
+(destructure "id" "tmp" []) -> [{id tmp}]
+
+# if different types, return false
+(destructure "id" ["tmp"] []) -> false
+
+# if same type and container
+
+
+# if a macro id match is found, but it can't expand (pattern doesn't match),
+# throw compile error
+
+###
