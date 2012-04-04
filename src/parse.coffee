@@ -1,17 +1,10 @@
 root  = @
 
-fs    = require 'fs'
-util  = require 'util'
+fs = require 'fs'
+_  = require './utils'
 
 Array::put = Array::unshift
 Array::take = Array::shift
-
-log = (n) ->
-        console.log util.inspect n, false, null
-
-
-val = (o) -> (v for k, v of o)[0]
-
 
 
 # stackMutator :: expr, stack -> _ (mutates stack)
@@ -20,7 +13,7 @@ defaultAlter = (expr, stack) ->
         if {}.toString.call(lower) is '[object Array]'
                 lower.push expr
         else
-                val(lower).push expr
+                _.val(lower).push expr
 
 involve = (expr, stack) ->
         expr = stack.take()
@@ -29,7 +22,6 @@ involve = (expr, stack) ->
 deeper = (expr, stack) ->
         stack.put expr
 
-# expressor :: chars -> false || [syntaxObj, index]
 
 # matchers :: [[str, expressor, stackMutator]]
 matchers = [
