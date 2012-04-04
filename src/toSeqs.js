@@ -1,23 +1,7 @@
 (function() {
-  var append2d, clump, clumpExpr, clumpSeq, eq, fs, log, parse, splitByElip, util;
+  var append2d, clump, clumpExpr, clumpSeq, clumpTmpl, root, splitByElip;
 
-  fs = require('fs');
-
-  util = require('util');
-
-  parse = require('./parse').parseFile;
-
-  eq = function(x, y) {
-    return JSON.stringify(x) === JSON.stringify(y);
-  };
-
-  Array.prototype.put = Array.prototype.unshift;
-
-  Array.prototype.take = Array.prototype.shift;
-
-  log = function(n) {
-    return console.log(util.inspect(n, false, null));
-  };
+  root = this;
 
   clump = function(patternSource, clumped) {
     var pRest, pSeq, pattern, sRest, sSeq, source, _ref;
@@ -47,7 +31,7 @@
         return false;
       }
     } else {
-      throw new Error('Unhandled case');
+      throw new Error('clump failed on pattern:\n' + JSON.stringify(patternSource));
     }
   };
 
@@ -103,80 +87,35 @@
     return [pSeq, pRest, sSeq, sRest];
   };
 
-  log('--splitByElip');
+  clumpTmpl = function(tmpl, seqs) {
+    if (seqs == null) seqs = [];
+    if (tmpl.length === 0) {
+      return seqs;
+    } else if (tmpl[1] && (tmpl[1] === '...')) {
+      return clumpTmpl(tmpl.slice(2), seqs.concat([
+        {
+          seq: clumpTmpl([tmpl[0]], [])
+        }
+      ]));
+    } else if (typeof tmpl[0] === 'string') {
+      return clumpTmpl(tmpl.slice(1), seqs.concat([tmpl[0]]));
+    } else if ({}.toString.call(tmpl[0]) === '[object Array]') {
+      return clumpTmpl(tmpl.slice(1), seqs.concat([clumpTmpl(tmpl[0], [])]));
+    } else {
+      throw new Error('clumpTmpl failed on pattern:\n' + JSON.stringify(tmpl));
+    }
+  };
 
-  log(splitByElip(['f', '...'], ['1', '2', '3']));
+  root.clump = clump;
 
-  log(splitByElip(['f', '...', 'g'], ['1', '2', '3']));
+  root.clumpExpr = clumpExpr;
 
-  log(splitByElip([['f', 'g'], '...'], [['1', '2'], ['2', '3']]));
+  root.clumpSeq = clumpSeq;
 
-  log('--clumpSeq - ok');
+  root.append2d = append2d;
 
-  log(clumpSeq([['f'], ['1', '2', '3']], [[], []]));
+  root.splitByElip = splitByElip;
 
-  log(clumpSeq([[['f']], [['1'], ['2'], ['3']]], [[], []]));
-
-  log(clumpSeq([[['f', 'g']], [['1', '2'], ['2', '3'], ['3', '4']]], [[], []]));
-
-  log(clumpSeq([[['f', ['g']]], [['1', ['2']], ['2', ['3']]]], [[], []]));
-
-  log(clumpSeq([['f'], []], [[], []]));
-
-  log('--clumpSeq - fail');
-
-  log(clumpSeq([['f'], ['1', '2', ['3']]], [[], []]));
-
-  log(clumpSeq([[['f', 'g']], [['1'], ['2'], ['3', '4']]], [[], []]));
-
-  log(clumpSeq([[['f', ['g']]], [['1', ['2']], ['2', '3']]], [[], []]));
-
-  log('--clump - ok');
-
-  log(clump([[], []], [[], []]));
-
-  log(clump([['f'], ['1']], [[], []]));
-
-  log(clump([['f', 'g', 'h'], ['1', '2', '3']], [[], []]));
-
-  log(clump([[['f']], [['1']]], [[], []]));
-
-  log(clump([[['f'], 'g'], [['1'], '2']], [[], []]));
-
-  log(clump([['h', ['f', 'x'], 'g'], ['3', ['1', '4'], '2']], [[], []]));
-
-  log(clump([['f', '...'], ['1', '2', '3']], [[], []]));
-
-  log(clump([['f', '...', 'g'], ['1', '2', '3']], [[], []]));
-
-  log(clump([['f', 'g', '...'], ['1', '2', '3']], [[], []]));
-
-  log(clump([[['f'], '...'], [['1'], ['2'], ['3']]], [[], []]));
-
-  log(clump([['f', '...'], []], [[], []]));
-
-  log(clump([[['f'], '...'], []], [[], []]));
-
-  log(clump([[['f'], '...', 'g'], [['1'], '4']], [[], []]));
-
-  log(clump([['g', ['f'], '...'], ['1']], [[], []]));
-
-  log(clump([[['f', 'g'], '...'], [['1', '2'], ['2', '3']]], [[], []]));
-
-  log(clump([[['f', '...'], '...'], [['1', '2'], ['2']]], [[], []]));
-
-  log('--clump - fail');
-
-  log(clump([['f'], []], [[], []]));
-
-  log(clump([[], ['1']], [[], []]));
-
-  log(clump([['f'], ['1', '2']], [[], []]));
-
-  log(clump([['f', 'g'], ['1']], [[], []]));
-
-  log(clump([[['f']], []], [[], []]));
-
-  log(clump([[['f']], ['1']], [[], []]));
+  root.clumpTmpl = clumpTmpl;
 
 }).call(this);

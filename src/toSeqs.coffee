@@ -53,7 +53,7 @@ clump = (patternSource, clumped) ->
 
         else # fail - unhandled case
 
-                throw new Error 'Pattern expansion (toSeqs) failed on pattern:\n' + JSON.stringify(patternSource)
+                throw new Error 'clump failed on pattern:\n' + JSON.stringify(patternSource)
 
 
 
@@ -112,7 +112,28 @@ splitByElip = (pattern, source) ->
 
 
 
-# tmplToSeqs : [pattern] -> [seqs]  # do the same, just mapsplit the template though
+# clumpTmpl : [pattern], [seqs] -> [seqs]
+# similar to clump, but just clumps the template by itself
+clumpTmpl = (tmpl, seqs = []) ->
+
+        if tmpl.length is 0 # done
+
+                seqs
+
+        else if tmpl[1] and (tmpl[1] is '...') # sequence detected
+
+                clumpTmpl tmpl[2..], seqs.concat([{seq: clumpTmpl([tmpl[0]], [])}])
+
+        else if typeof tmpl[0] is 'string' # atom, retain as-is
+
+                clumpTmpl tmpl[1..], seqs.concat([tmpl[0]])
+
+        else if {}.toString.call(tmpl[0]) is '[object Array]' # go down tree
+
+                clumpTmpl tmpl[1..], seqs.concat([clumpTmpl(tmpl[0], [])])
+        else
+                throw new Error 'clumpTmpl failed on pattern:\n' + JSON.stringify(tmpl)
+
 
 
 
@@ -121,3 +142,4 @@ root.clumpExpr   = clumpExpr
 root.clumpSeq    = clumpSeq
 root.append2d    = append2d
 root.splitByElip = splitByElip
+root.clumpTmpl   = clumpTmpl

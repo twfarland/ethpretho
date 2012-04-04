@@ -1,33 +1,16 @@
 (function() {
-  var deeper, defaultAlter, fs, involve, log, makeTree, matchers, parseFile, root, util, val,
+  var deeper, defaultAlter, fs, involve, makeTree, matchers, parseFile, root, _,
     __indexOf = Array.prototype.indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; };
 
   root = this;
 
   fs = require('fs');
 
-  util = require('util');
+  _ = require('./utils.js');
 
   Array.prototype.put = Array.prototype.unshift;
 
   Array.prototype.take = Array.prototype.shift;
-
-  log = function(n) {
-    return console.log(util.inspect(n, false, null));
-  };
-
-  val = function(o) {
-    var k, v;
-    return ((function() {
-      var _results;
-      _results = [];
-      for (k in o) {
-        v = o[k];
-        _results.push(v);
-      }
-      return _results;
-    })())[0];
-  };
 
   defaultAlter = function(expr, stack) {
     var lower;
@@ -35,7 +18,7 @@
     if ({}.toString.call(lower) === '[object Array]') {
       return lower.push(expr);
     } else {
-      return val(lower).push(expr);
+      return _.val(lower).push(expr);
     }
   };
 
