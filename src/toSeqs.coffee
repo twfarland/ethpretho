@@ -116,23 +116,27 @@ splitByElip = (pattern, source) ->
 # similar to clump, but just clumps the template by itself
 clumpTmpl = (tmpl, seqs = []) ->
 
-        if tmpl.length is 0 # done
+        until tmpl.length is 0 # done
 
-                seqs
+                if tmpl[1] and (tmpl[1] is '...') # sequence detected
 
-        else if tmpl[1] and (tmpl[1] is '...') # sequence detected
+                        seqs.push {seq: clumpTmpl([tmpl[0]])}
+                        tmpl.splice 0, 2
 
-                clumpTmpl tmpl[2..], seqs.concat([{seq: clumpTmpl([tmpl[0]], [])}])
+                else if typeof tmpl[0] is 'string' # atom, retain as-is
 
-        else if typeof tmpl[0] is 'string' # atom, retain as-is
+                        seqs.push tmpl[0]
+                        tmpl.splice 0, 1
 
-                clumpTmpl tmpl[1..], seqs.concat([tmpl[0]])
+                else if {}.toString.call(tmpl[0]) is '[object Array]' # go down tree
 
-        else if {}.toString.call(tmpl[0]) is '[object Array]' # go down tree
+                        seqs.push clumpTmpl(tmpl[0])
+                        tmpl.splice 0, 1
 
-                clumpTmpl tmpl[1..], seqs.concat([clumpTmpl(tmpl[0], [])])
-        else
-                throw new Error 'clumpTmpl failed on pattern:\n' + JSON.stringify(tmpl)
+                else
+                        throw new Error 'clumpTmpl failed on pattern:\n' + JSON.stringify(tmpl)
+
+        seqs
 
 
 

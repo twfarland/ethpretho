@@ -89,21 +89,23 @@
 
   clumpTmpl = function(tmpl, seqs) {
     if (seqs == null) seqs = [];
-    if (tmpl.length === 0) {
-      return seqs;
-    } else if (tmpl[1] && (tmpl[1] === '...')) {
-      return clumpTmpl(tmpl.slice(2), seqs.concat([
-        {
-          seq: clumpTmpl([tmpl[0]], [])
-        }
-      ]));
-    } else if (typeof tmpl[0] === 'string') {
-      return clumpTmpl(tmpl.slice(1), seqs.concat([tmpl[0]]));
-    } else if ({}.toString.call(tmpl[0]) === '[object Array]') {
-      return clumpTmpl(tmpl.slice(1), seqs.concat([clumpTmpl(tmpl[0], [])]));
-    } else {
-      throw new Error('clumpTmpl failed on pattern:\n' + JSON.stringify(tmpl));
+    while (tmpl.length !== 0) {
+      if (tmpl[1] && (tmpl[1] === '...')) {
+        seqs.push({
+          seq: clumpTmpl([tmpl[0]])
+        });
+        tmpl.splice(0, 2);
+      } else if (typeof tmpl[0] === 'string') {
+        seqs.push(tmpl[0]);
+        tmpl.splice(0, 1);
+      } else if ({}.toString.call(tmpl[0]) === '[object Array]') {
+        seqs.push(clumpTmpl(tmpl[0]));
+        tmpl.splice(0, 1);
+      } else {
+        throw new Error('clumpTmpl failed on pattern:\n' + JSON.stringify(tmpl));
+      }
     }
+    return seqs;
   };
 
   root.clump = clump;
