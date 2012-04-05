@@ -10,6 +10,10 @@ splitByElip = toSeqs.splitByElip
 clump       = toSeqs.clump
 clumpSeq    = toSeqs.clumpSeq
 clumpTmpl   = toSeqs.clumpTmpl
+subsFromPattern = toSeqs.subsFromPattern
+applySub        = toSeqs.applySub
+applyAllSubs    = toSeqs.applyAllSubs
+substitute        = toSeqs.substitute
 
 log '--splitByElip'
 ast splitByElip(['f', '...'], ['1','2','3']), [['f'], [], ['1','2','3'], []]
@@ -79,7 +83,7 @@ ast clump([ ['f','g'], ['1'] ], [[],[]]), false
 ast clump([ [['f']], [] ], [[],[]]), false
 ast clump([ [['f']], ['1'] ], [[],[]]), false
 
-log '--clumpTmpl - ok'
+log '--clumpTmpl'
 ast clumpTmpl([]), []
 ast clumpTmpl(['f']), ['f']
 ast clumpTmpl(['f','g','h']), ['f','g','h']
@@ -89,3 +93,42 @@ ast clumpTmpl([['f','g'],'...']), [{ seq: [['f','g']] }]
 ast clumpTmpl(['h',['f','g'],'...','i']), ['h',{ seq: [['f','g']] },'i']
 ast clumpTmpl([['f','...'],'...']), [{ seq: [[{ seq: ['f']}]] }]
 ast clumpTmpl([['f','...','g'],'...','h']), [{ seq: [[{ seq: ['f']}, 'g']] }, 'h']
+
+###
+log '--trySubst - ok'
+ast trySubst([],[],[]), []
+ast trySubst(['f'],['1'],['f']), [{sub: 'f', w: '1'}]
+ast trySubst(
+        ['id', [{seq: ['pairs']}], 'p','b'],
+        ['+',  [{seq: ['1','2','3']}], '4', '5'],
+        ['id', {seq: ['pairs']}, ['p','b']]
+), [
+        {sub: 'id', w: '+'},
+        {sub: {seq: ['pairs']}, w: {seq: ['1','2','3']}},
+        [{sub:'p',w:'4'},
+        {sub:'b',w:'5'}]
+   ]
+###
+
+
+log '--subsFromPattern - ok'
+log subsFromPattern ['id', [{seq: ['pairs']}], 'p','b'], ['+',  [{seq: ['1','2','3']}], '4', '5']
+log subsFromPattern ['x',['y','z']], ['1',['2','3']]
+log subsFromPattern ['x',['y',{seq:['z']}]], ['1',['2',{seq:['3','4']}]]
+log subsFromPattern [{seq: [['x','y']]}], [{seq:[['1','2'],['3','4']]}]
+
+log '--applySub - ok'
+log applySub((sub, e) -> sub) {from:'x', to:'1'}, ['y','x','z']
+
+log '--trySubst'
+log substitute ['x','y'], ['1','2'], ['z','x','y','tmp'], [{from:'tmp'}]
+
+log '--trySubst - scoping safely'
+log(substitute(
+        ['x','y'],
+        ['tmp', 'other'],
+        ['let', [['tmp', 'x']],
+                ['=','x','y'],
+                ['=','y','tmp']],
+        [{from: 'tmp', to: '5'}, {from: 'other', to: '6'}]
+))

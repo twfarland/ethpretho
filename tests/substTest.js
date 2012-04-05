@@ -1,5 +1,5 @@
 (function() {
-  var args, ast, clump, clumpSeq, clumpTmpl, fs, log, splitByElip, toSeqs, _;
+  var applyAllSubs, applySub, args, ast, clump, clumpSeq, clumpTmpl, fs, log, splitByElip, subsFromPattern, substitute, toSeqs, _;
 
   fs = require('fs');
 
@@ -20,6 +20,14 @@
   clumpSeq = toSeqs.clumpSeq;
 
   clumpTmpl = toSeqs.clumpTmpl;
+
+  subsFromPattern = toSeqs.subsFromPattern;
+
+  applySub = toSeqs.applySub;
+
+  applyAllSubs = toSeqs.applyAllSubs;
+
+  substitute = toSeqs.substitute;
 
   log('--splitByElip');
 
@@ -263,7 +271,7 @@
 
   ast(clump([[['f']], ['1']], [[], []]), false);
 
-  log('--clumpTmpl - ok');
+  log('--clumpTmpl');
 
   ast(clumpTmpl([]), []);
 
@@ -318,5 +326,92 @@
       ]
     }, 'h'
   ]);
+
+  /*
+  log '--trySubst - ok'
+  ast trySubst([],[],[]), []
+  ast trySubst(['f'],['1'],['f']), [{sub: 'f', w: '1'}]
+  ast trySubst(
+          ['id', [{seq: ['pairs']}], 'p','b'],
+          ['+',  [{seq: ['1','2','3']}], '4', '5'],
+          ['id', {seq: ['pairs']}, ['p','b']]
+  ), [
+          {sub: 'id', w: '+'},
+          {sub: {seq: ['pairs']}, w: {seq: ['1','2','3']}},
+          [{sub:'p',w:'4'},
+          {sub:'b',w:'5'}]
+     ]
+  */
+
+  log('--subsFromPattern - ok');
+
+  log(subsFromPattern([
+    'id', [
+      {
+        seq: ['pairs']
+      }
+    ], 'p', 'b'
+  ], [
+    '+', [
+      {
+        seq: ['1', '2', '3']
+      }
+    ], '4', '5'
+  ]));
+
+  log(subsFromPattern(['x', ['y', 'z']], ['1', ['2', '3']]));
+
+  log(subsFromPattern([
+    'x', [
+      'y', {
+        seq: ['z']
+      }
+    ]
+  ], [
+    '1', [
+      '2', {
+        seq: ['3', '4']
+      }
+    ]
+  ]));
+
+  log(subsFromPattern([
+    {
+      seq: [['x', 'y']]
+    }
+  ], [
+    {
+      seq: [['1', '2'], ['3', '4']]
+    }
+  ]));
+
+  log('--applySub - ok');
+
+  log(applySub(function(sub, e) {
+    return sub;
+  })({
+    from: 'x',
+    to: '1'
+  }, ['y', 'x', 'z']));
+
+  log('--trySubst');
+
+  log(substitute(['x', 'y'], ['1', '2'], ['z', 'x', 'y', 'tmp'], [
+    {
+      from: 'tmp'
+    }
+  ]));
+
+  log('--trySubst - scoping safely');
+
+  log(substitute(['x', 'y'], ['tmp', 'other'], ['let', [['tmp', 'x']], ['=', 'x', 'y'], ['=', 'y', 'tmp']], [
+    {
+      from: 'tmp',
+      to: '5'
+    }, {
+      from: 'other',
+      to: '6'
+    }
+  ]));
 
 }).call(this);
