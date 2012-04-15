@@ -189,8 +189,6 @@
 
   root.clumpTmpl = clumpTmpl;
 
-  root.trySubst = trySubst;
-
   root.subsFromPattern = subsFromPattern;
 
   root.applySub = applySub;

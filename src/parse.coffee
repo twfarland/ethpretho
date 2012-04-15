@@ -6,11 +6,14 @@ _  = require './utils.js'
 Array::put = Array::unshift
 Array::take = Array::shift
 
+toStr = {}.toString
+obArr = '[object Array]'
+
 
 # stackMutator :: expr, stack -> _ (mutates stack)
 defaultAlter = (expr, stack) ->
         lower = stack[0]
-        if {}.toString.call(lower) is '[object Array]'
+        if toStr.call(lower) is obArr
                 lower.push expr
         else
                 _.val(lower).push expr
@@ -69,6 +72,7 @@ matchers = [
 
         ['line'
         (str) -> if str[0] is '\n' then ['\n', 1]
+        (expr, stack) -> false
         ]
 
         ['space'
@@ -125,7 +129,7 @@ makeTree = (str, stack) ->
 # async parse
 parseFile = (file, callback) ->
         fs.readFile file, 'utf-8', (err, data) ->
-                callback err, makeTree(data, [',': []])
+                callback err, makeTree(data, [[]])
 
 
 

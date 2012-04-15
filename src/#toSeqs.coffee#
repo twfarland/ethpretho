@@ -194,6 +194,7 @@ applySub = (onMatch) -> (sub, tmpl, newTmpl = []) ->
                  tmpl.splice 0, 1
         newTmpl
 
+ 
 
 # mutates tmpl
 applyAllSubs = (onMatch, subs, tmpl) ->

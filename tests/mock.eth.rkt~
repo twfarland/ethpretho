@@ -1,0 +1,18 @@
+(~loadmacros "ethpretho")
+
+(:= (layout d)
+  
+  ['html
+   ['doctype "html"
+             ['head ['title d.myblog]
+                    (~includeCss "site.css")]
+             ['body
+              ['h1 d.pageTitle]
+              ['p d.article]]
+             
+             (~includeJs "jquery")
+             
+             (~toEth ($ (-> () 
+                       (:= next ($ "a"))
+                       (~click next (alert @)))))]])
+

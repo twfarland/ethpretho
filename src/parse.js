@@ -1,5 +1,5 @@
 (function() {
-  var deeper, defaultAlter, fs, involve, makeTree, matchers, parseFile, root, _,
+  var deeper, defaultAlter, fs, involve, makeTree, matchers, obArr, parseFile, root, toStr, _,
     __indexOf = Array.prototype.indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; };
 
   root = this;
@@ -12,10 +12,14 @@
 
   Array.prototype.take = Array.prototype.shift;
 
+  toStr = {}.toString;
+
+  obArr = '[object Array]';
+
   defaultAlter = function(expr, stack) {
     var lower;
     lower = stack[0];
-    if ({}.toString.call(lower) === '[object Array]') {
+    if (toStr.call(lower) === obArr) {
       return lower.push(expr);
     } else {
       return _.val(lower).push(expr);
@@ -91,6 +95,8 @@
     ], [
       'line', function(str) {
         if (str[0] === '\n') return ['\n', 1];
+      }, function(expr, stack) {
+        return false;
       }
     ], [
       'space', function(str) {
@@ -153,11 +159,7 @@
 
   parseFile = function(file, callback) {
     return fs.readFile(file, 'utf-8', function(err, data) {
-      return callback(err, makeTree(data, [
-        {
-          ',': []
-        }
-      ]));
+      return callback(err, makeTree(data, [[]]));
     });
   };
 
