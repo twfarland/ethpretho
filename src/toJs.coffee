@@ -1,3 +1,9 @@
+# todo : get all of js primitives. incl switch, try/catch etc
+# parse / compile comments
+# write test suite
+# rewrite in itself
+# write hygenic macro system
+
 root = @
 
 _      = require './utils.js'

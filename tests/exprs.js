@@ -39,7 +39,7 @@ return res;
 return ("<" + arr["0"] + ">");
 } else if (isObject(arr["1"])) {
 if (arr.length === 2) {
-return ("<" + arr["0"] + attrs(arr["1"]) + ".");
+return ("<" + arr["0"] + attrs(arr["1"]) + ">");
 } else {
 return ("<" + arr["0"] + attrs(arr["1"]) + ">" + inner(..(arr, 2)) + "</" + arr["0"] + ">");
 }
