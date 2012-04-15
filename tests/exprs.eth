@@ -1,2 +1,41 @@
-(:= x (?? (< y 2) 2 
-          (for ((in i z)) (alter (. z i) y))))
+(:= root this)
+
+(:= toString (. {} toString))
+
+(:= isArray (|| (. Array isArray) 
+                (-> (elem) (=== (. toString call elem) "[object Array]"))))
+(:= (Don)
+  
+  (:= (inner arr)
+    (:= res "")
+    (for ((in e arr)) (:= elem (. arr (e)))
+      (+= res (?? (isArray elem) (toHtml elem) elem)))
+    res)
+  
+  (:= (attrs obj)
+    (:= res "")
+    (for ((in k obj)) (:= val (. obj (k)))
+      (+=  res (+ " " k "=\"" val "\"")))
+    res)
+  
+  (:= (toHtml arr)
+    
+    (?? (=== arr.length 0)   ""
+        (isArray (. arr 0))  (,, (:= res "")
+                                 (for ((in e arr)) (+= res (toHtml (. arr (e)))))
+                                 res)
+        (=== arr.length 1)   (+ "<" (. arr 0) ">")
+        (isObject (. arr 1)) (?? (=== arr.length 2) 
+                                 (+ "<" (. arr 0) (attrs (. arr 1)) ".")
+                                 (+ "<" (. arr 0) (attrs (. arr 1)) ">" 
+                                    (inner (.. arr 2)) 
+                                    "</" (. arr 0) ">"))
+        (+ "<" (. arr 0) (inner (.. arr 1)) "</" (. arr 0) ">")))
+  
+  (= this.toHtml toHtml)
+  
+  (= (this.render data template key) (toHtml (template data key)))
+  
+  this)
+
+(= root.Don (new (Don)))

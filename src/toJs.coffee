@@ -26,6 +26,9 @@ pairize = (arr) ->
 branchers     = ['??', 'switch']
 blockCreators = branchers.concat ['for']
 
+wrap = (res, p) ->
+        if p in ['','=','()'] then res else '(' + res + ')' # wrap if it has a parent
+
 
 # primitive exprs - may need to eval to something depending on p
 prim =
@@ -71,7 +74,7 @@ prim =
 
                         prd = e[1..]
 
-                        res = 'if (' + toJs(prd[0], '??') + ') ' + block(prepBranch(prd[1]), p)
+                        res = 'if (' + toJs(prd[0], '()') + ') ' + block(prepBranch(prd[1]), p)
                         prd.splice 0, 2
 
                         until prd.length is 0
@@ -80,7 +83,7 @@ prim =
                                         res += ' else ' + block(prepBranch(prd[0]), p)
                                         prd.splice 0, 1
                                 else
-                                        res += ' else if (' + toJs(prd[0], '??') + ') ' + block(prepBranch(prd[1]), p)
+                                        res += ' else if (' + toJs(prd[0], '()') + ') ' + block(prepBranch(prd[1]), p)
                                         prd.splice 0, 2
                         res
                 else
@@ -110,33 +113,42 @@ prim =
 
 
 # put operators into primitives
-wrap = (res, p) ->
-        if p in ['','='] then res else '(' + res + ')' # wrap if it has a parent
 
 binaryPr = (sym) -> (e, p) ->
         wrap (toJs(e_, sym) for e_ in e[1..]).join(' ' + sym + ' '), p # always eval to something
 
 
-unaryPr = (sym) -> (e, p) ->
+unaryPost = (sym) -> (e, p) ->
         if p is ''
                 wrap e[1] + sym, p
         else
                 wrap e[1] + sym + ', ' + e[1], p
 
+unaryPr = (sym) -> (e, p) ->
+        if e.length < 3
+                arg = e[1]
+        else
+                arg = e[1..]
+
+        wrap sym + ' ' + toJs(arg, p), p
 
 dualPr = (sym) -> (e, p) -> # always eval to something
         if e.length is 2
-                wrap sym + e[1] + ')', p
+                wrap sym + e[1], p
         else
                 wrap (toJs(e_, sym) for e_ in e[1..]).join(' ' + sym + ' '), p
 
 for op in ['*', '/', '%',
            '+=', '*=', '/=', '%=', '+=', '-=', '<<=', '>>=', '>>>=', '&=', '^=', '|=',
            '==', '!=', '===', '!==', '>', '>=', '<', '<=',
-           'in']
+           'in', 'instanceof',
+           '&&', '||']
         prim[op] = binaryPr op
 
-for op in ['++','--', 'typeof']
+for op in ['++','--']
+        prim[op] = unaryPost op
+
+for op in ['typeof', 'new']
         prim[op] = unaryPr op
 
 for op in ['+', '-', '!']
