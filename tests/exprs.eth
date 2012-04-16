@@ -8,29 +8,29 @@
   
   (:= (inner arr)
     (:= res "")
-    (for ((in e arr)) (:= elem (. arr (e)))
-      (+= res (?? (isArray elem) (toHtml elem) elem)))
+    (for ((in e arr)) (:= elem (. arr (e))) (+= res (if (isArray elem) (toHtml elem) elem)))
     res)
   
   (:= (attrs obj)
     (:= res "")
-    (for ((in k obj)) (:= val (. obj (k)))
-      (+=  res (+ " " k "=\"" val "\"")))
+    (for ((in k obj)) (:= val (. obj (k))) (+= res (+ " " k "=\"" val "\"")))
     res)
   
   (:= (toHtml arr)
     
-    (?? (=== arr.length 0)   ""
-        (isArray (. arr 0))  (,, (:= res "")
+    (if (=== arr.length 0)   ""
+        
+        (isArray (. arr 0))  (, (:= res "")
                                  (for ((in e arr)) (+= res (toHtml (. arr (e)))))
                                  res)
+        
         (=== arr.length 1)   (+ "<" (. arr 0) ">")
-        (isObject (. arr 1)) (?? (=== arr.length 2) 
+        
+        (isObject (. arr 1)) (if (=== arr.length 2) 
                                  (+ "<" (. arr 0) (attrs (. arr 1)) ">")
-                                 (+ "<" (. arr 0) (attrs (. arr 1)) ">" 
-                                    (inner (.. arr 2)) 
-                                    "</" (. arr 0) ">"))
-        (+ "<" (. arr 0) (inner (.. arr 1)) "</" (. arr 0) ">")))
+                                 (+ "<" (. arr 0) (attrs (. arr 1)) ">" (inner (. arr (0 2))) "</" (. arr 0) ">"))
+        
+        (+ "<" (. arr 0) (inner (. arr (0 1))) "</" (. arr 0) ">")))
   
   (= this.toHtml toHtml)
   

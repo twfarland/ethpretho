@@ -15,6 +15,7 @@ toStr = {}.toString
 obArr = '[object Array]'
 log = _.log
 
+# utils
 
 pairize = (arr) ->
         odd = false
@@ -27,10 +28,23 @@ pairize = (arr) ->
                         odd = true
         res
 
-
-
-branchers     = ['??', 'switch']
+branchers     = ['if', 'switch', ',']
 blockCreators = branchers.concat ['for']
+
+isBrancher = (e) ->
+        e[0] and e[0] in branchers
+
+prepBranch = (e) -> # rewrite
+        if isBrancher e
+                e[1..]
+        else
+                [e]
+
+getSemi = (e) ->
+        if e[0] and (e[0] in blockCreators)
+                ''
+        else
+                ';'
 
 wrap = (res, p) ->
         if p in ['','=','()'] then res else '(' + res + ')' # wrap if it has a parent
@@ -51,9 +65,12 @@ prim =
         '.': (e, p) ->
                 if toStr.call(e[2]) is obArr
 
-                        key = e[2][0]
+                        if e[2].length is 1
+                                key = e[2][0] # [i]
+                        else
+                                return toJs ['.', e[1], 'slice', e[2][0], e[2][1]], p # range rewrite -> e.slice(i, j)
                 else
-                        key = '"'+ e[2] + '"'
+                        key = '"'+ e[2] + '"' # ["i"]
 
                 if e[3..].length > 0
 
@@ -61,7 +78,7 @@ prim =
                 else
                         fCall = ''
 
-                toJs(e[1], '[]') + '[' + key + ']' + fCall # todo - ranges for arrays
+                toJs(e[1], '[]') + '[' + key + ']' + fCall
 
         '->': (e, p) -> # function
                 '(function (' + e[1].join(', ') + ') ' + block(e[2..], '->') + ')'
@@ -69,12 +86,10 @@ prim =
         'return': (e, p) ->
                 'return ' + toJs(e[1], 'return') + ';'
 
-        ',,': (e, p) -> # sequence - implies block - shouldn't be used directly
-                block e[1..], p
 
         # control flow branchers
 
-        '??': (e, p) -> # e.g: (?? (< 2 3) 4 5)
+        'if': (e, p) -> # e.g: (?? (< 2 3) 4 5)
 
                 if p is '->' or p is '' # in open space - just do side effects
 
@@ -148,33 +163,18 @@ for op in ['*', '/', '%',
            '+=', '*=', '/=', '%=', '+=', '-=', '<<=', '>>=', '>>>=', '&=', '^=', '|=',
            '==', '!=', '===', '!==', '>', '>=', '<', '<=',
            'in', 'instanceof',
-           '&&', '||']
+           '&&', '||', ',']
         prim[op] = binaryPr op
 
 for op in ['++','--']
         prim[op] = unaryPost op
 
-for op in ['typeof', 'new']
+for op in ['typeof', 'new', 'throw']
         prim[op] = unaryPr op
 
 for op in ['+', '-', '!']
         prim[op] = dualPr op
 
-
-prepBranch = (e) -> # rewrite
-        if e[0] and e[0] is ',,'
-                e[1..]
-        else
-                [e]
-
-isBrancher = (e) ->
-        e[0] and e[0] in branchers
-
-getSemi = (e) ->
-        if e[0] and (e[0] in blockCreators)
-                ''
-        else
-                ';'
 
 
 block = (exprs, p) ->
