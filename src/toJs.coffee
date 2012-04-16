@@ -35,7 +35,7 @@ pairize = (arr) ->
                         odd = true
         res
 
-branchers = ['if', 'switch', ',']
+branchers = ['if', 'switch']
 blockCreators = branchers.concat ['for']
 noWrap = ['','=','()','return']
 
@@ -43,7 +43,7 @@ isBrancher = (e) ->
         e[0] and e[0] in branchers
 
 prepBranch = (e) -> # rewrite
-        if isBrancher e
+        if e[0] and (e[0] is ',')
                 e[1..]
         else
                 [e]

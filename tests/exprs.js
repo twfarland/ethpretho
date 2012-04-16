@@ -43,9 +43,11 @@ var Don = function () {
         } else if (arr.length === 1) {
             return "<" + arr[0] + ">";
         } else if (isObject(arr[1])) {
-            arr.length === 2;
-            "<" + arr[0] + attrs(arr[1]) + ">";
-            return "<" + arr[0] + attrs(arr[1]) + ">" + inner(arr.slice(0, 2)) + "</" + arr[0] + ">";
+            if (arr.length === 2) {
+                return "<" + arr[0] + attrs(arr[1]) + ">";
+            } else {
+                return "<" + arr[0] + attrs(arr[1]) + ">" + inner(arr.slice(0, 2)) + "</" + arr[0] + ">";
+            }
         } else {
             return "<" + arr[0] + inner(arr.slice(0, 1)) + "</" + arr[0] + ">";
         }
