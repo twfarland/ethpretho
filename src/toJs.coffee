@@ -17,6 +17,13 @@ log = _.log
 
 # utils
 
+getIndent = (i) ->
+        res = ''
+        until i < 1
+                res += '    '
+                i--
+        res
+
 pairize = (arr) ->
         odd = false
         res = []
@@ -52,76 +59,76 @@ wrap = (res, p) ->
 
 # primitive exprs - may need to eval to something depending on p
 prim =
-        ':=': (e, p) ->
-                'var ' + prim['='] e, p
+        ':=': (e, p, i) ->
+                'var ' + prim['='] e, p, i
 
-        '=': (e, p) ->
+        '=': (e, p, i) ->
                 if toStr.call(e[1]) is obArr
 
-                        toJs(e[1][0], '=') + ' = ' + toJs(['->', e[1][1..]].concat(e[2..]), '=')
+                        toJs(e[1][0], '=', i) + ' = ' + toJs(['->', e[1][1..]].concat(e[2..]), '=', i)
                 else
-                        toJs(e[1], '=') + ' = ' + toJs(e[2], '=')
+                        toJs(e[1], '=', i) + ' = ' + toJs(e[2], '=', i)
 
-        '.': (e, p) ->
+        '.': (e, p, i) ->
                 if toStr.call(e[2]) is obArr
 
                         if e[2].length is 1
                                 key = e[2][0] # [i]
                         else
-                                return toJs ['.', e[1], 'slice', e[2][0], e[2][1]], p # range rewrite -> e.slice(i, j)
+                                return toJs ['.', e[1], 'slice', e[2][0], e[2][1]], p, i # range rewrite -> e.slice(i, j)
                 else
                         key = '"'+ e[2] + '"' # ["i"]
 
                 if e[3..].length > 0
 
-                        fCall = '(' + (toJs(e_, '.') for e_ in e[3..]).join(', ') + ')'
+                        fCall = '(' + (toJs(e_, '.', i) for e_ in e[3..]).join(', ') + ')'
                 else
                         fCall = ''
 
-                toJs(e[1], '[]') + '[' + key + ']' + fCall
+                toJs(e[1], '[]', i) + '[' + key + ']' + fCall
 
-        '->': (e, p) -> # function
-                '(function (' + e[1].join(', ') + ') ' + block(e[2..], '->') + ')'
+        '->': (e, p, i) -> # function
+                '(function (' + e[1].join(', ') + ') ' + block(e[2..], '->', i) + ')'
 
-        'return': (e, p) ->
-                'return ' + toJs(e[1], 'return') + ';'
+        'return': (e, p, i) ->
+                'return ' + toJs(e[1], 'return', i) + ';'
 
 
         # control flow branchers
 
-        'if': (e, p) -> # e.g: (?? (< 2 3) 4 5)
+        'if': (e, p, i) -> # e.g: (?? (< 2 3) 4 5)
 
                 if p is '->' or p is '' # in open space - just do side effects
 
                         prd = e[1..]
 
-                        res = 'if (' + toJs(prd[0], '()') + ') ' + block(prepBranch(prd[1]), p)
+                        res = 'if (' + toJs(prd[0], '()', i) + ') ' + block(prepBranch(prd[1]), p, i)
                         prd.splice 0, 2
 
                         until prd.length is 0
 
                                 if prd.length is 1
-                                        res += ' else ' + block(prepBranch(prd[0]), p)
+                                        res += ' else ' + block(prepBranch(prd[0]), p, i)
                                         prd.splice 0, 1
                                 else
-                                        res += ' else if (' + toJs(prd[0], '()') + ') ' + block(prepBranch(prd[1]), p)
+                                        res += ' else if (' + toJs(prd[0], '()', i) + ') ' + block(prepBranch(prd[1]), p, i)
                                         prd.splice 0, 2
                         res
                 else
-                        toJs [['->', [], e]], p # needs to eval to something, so wrap in self-calling func
+                        toJs [['->', [], e]], p, i # needs to eval to something, so wrap in self-calling func
 
 
-        'for': (e, p) -> # e.g: (for (clauses) body...) - just the basic js for
+        'for': (e, p, i) -> # e.g: (for (clauses) body...) - just the basic js for
 
                 if p is '->' or p is '' # in open space - just do side effects
 
-                        'for (' + (toJs(e_, '') for e_ in e[1]).join('; ')  + ') ' + block(e[2..], '')
+                        'for (' + (toJs(e_, '', i) for e_ in e[1]).join('; ')  + ') ' + block(e[2..], '', i)
 
                 else    # in an expr - wrap in self-calling func and collect results into array - a REWRITE
                         pre     = e.slice 0, -1
                         last    = e.slice -1
 
-                        toJs [ ['->', [], [':=', 'res_', {a: []}], pre.concat([['res_.push', last[0]]]), 'res_'] ],
+                        toJs [ ['->', [], [':=', 'res_', {a: []}], pre.concat([['res_.push', last[0]]]), 'res_'] ], p, i
 
         # open block creators
 
@@ -135,29 +142,29 @@ prim =
 
 # put operators into primitives
 
-binaryPr = (sym) -> (e, p) ->
-        wrap (toJs(e_, sym) for e_ in e[1..]).join(' ' + sym + ' '), p # always eval to something
+binaryPr = (sym) -> (e, p, i) ->
+        wrap (toJs(e_, sym, i) for e_ in e[1..]).join(' ' + sym + ' '), p # always eval to something
 
 
-unaryPost = (sym) -> (e, p) ->
+unaryPost = (sym) -> (e, p, i) ->
         if p is ''
                 wrap e[1] + sym, p
         else
                 wrap e[1] + sym + ', ' + e[1], p
 
-unaryPr = (sym) -> (e, p) ->
+unaryPr = (sym) -> (e, p, i) ->
         if e.length < 3
                 arg = e[1]
         else
                 arg = e[1..]
 
-        wrap sym + ' ' + toJs(arg, p), p
+        wrap sym + ' ' + toJs(arg, p, i), p
 
-dualPr = (sym) -> (e, p) -> # always eval to something
+dualPr = (sym) -> (e, p, i) -> # always eval to something
         if e.length is 2
                 wrap sym + e[1], p
         else
-                wrap (toJs(e_, sym) for e_ in e[1..]).join(' ' + sym + ' '), p
+                wrap (toJs(e_, sym, i) for e_ in e[1..]).join(' ' + sym + ' '), p
 
 for op in ['*', '/', '%',
            '+=', '*=', '/=', '%=', '+=', '-=', '<<=', '>>=', '>>>=', '&=', '^=', '|=',
@@ -177,7 +184,7 @@ for op in ['+', '-', '!']
 
 
 
-block = (exprs, p) ->
+block = (exprs, p, i) ->
 
         # p can only ever be '->' or '' here - it is reset when entering a block.
         # indent all children
@@ -190,29 +197,34 @@ block = (exprs, p) ->
         pre  = exprs.slice 0, -1
         last = exprs.slice -1
 
+        ind = getIndent i
+        i_ = i + 1 # increment indentation level for children
+
         res = '{\n'
 
         if pre.length > 0 # pre elements
 
                 for e in pre
-                        res += toJs(e, '')  + getSemi(e) + '\n' # reset par - in open block
+                        res += ind + toJs(e, '', i_)  + getSemi(e) + '\n' # reset par - in open block
 
         if last.length is 1 # last element
 
+                res += ind
+
                 if isBrancher last[0]
-                        res += toJs(last[0], p) + getSemi(last[0])
+                        res += toJs(last[0], p, i_) + getSemi(last[0])
 
                 else if p is '->'
-                        res += toJs ['return', last[0]], p
+                        res += toJs ['return', last[0]], p, i_
                 else
-                        res += toJs(last[0], p) + getSemi(last[0])
+                        res += toJs(last[0], p, i_) + getSemi(last[0])
 
-        res + '\n}'
+        res + '\n' + getIndent(i - 1) + '}'
 
 
 # p is the parent expression, or '', which is a normal block, or '->', which is a function body
-
-toJs = (expr, p = '') ->
+# i is the indentation level, which is increased inside blocks
+toJs = (expr, p = '', i) ->
 
         if typeof expr is 'string'
 
@@ -228,11 +240,11 @@ toJs = (expr, p = '') ->
                         if prim[first]
 
                                 # primitive expr - go to table for a solution
-                                prim[first] expr, p
+                                prim[first] expr, p, i
 
                         else
                                 # user-defined: function call
-                                toJs(first) + '(' + (toJs e, first for e in expr[1..]).join(', ') + ')'
+                                toJs(first, '', i) + '(' + (toJs e, first, i for e in expr[1..]).join(', ') + ')'
                 else
                         ''
         else
@@ -246,13 +258,13 @@ toJs = (expr, p = '') ->
                 else if exprKey is 'a'
 
                         # base primitive: array literal
-                        '[' + (toJs e, '[]' for e in expr.a).join(', ') + ']'
+                        '[' + (toJs e, '[]', i for e in expr.a).join(', ') + ']'
 
                 else if exprKey is 'o'
 
                         # base primitive: object literal
                         pairs = pairize expr.o
-                        '{' + (toJs(pair[0], '{}') + ': ' + toJs(pair[1], '{}') for pair in pairs).join(', ') + '}'
+                        '{' + (toJs(pair[0], '{}', i) + ': ' + toJs(pair[1], '{}', i) for pair in pairs).join(', ') + '}'
                 else
                         # unhandled case
                         throw new Error('Unhandled case: ' + util.inspect(expr))
@@ -262,7 +274,7 @@ parse.parseFile '../tests/exprs.eth', (err, data) ->
 
         log data
 
-        fs.writeFile '../tests/exprs.js', block(data[0])[2..-2], (err) ->
+        fs.writeFile '../tests/exprs.js', block(data[0], '', 0)[2..-2], (err) ->
             if err
                 console.log err
             else
