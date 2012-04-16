@@ -105,7 +105,6 @@ matchers = [
 ]
 
 
-
 # makeTree :: str, stack -> stack
 # the stack accumulates syntax nodes as the str is consumed
 makeTree = (str, stack) ->
@@ -134,3 +133,6 @@ parseFile = (file, callback) ->
 
 
 root.parseFile = parseFile
+
+
+# todo - throw syntax errors!
