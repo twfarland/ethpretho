@@ -102,7 +102,7 @@ prim =
                 'function (' + e[1].join(', ') + ') ' + block(e[2..], '->', i)
 
         'return': (e, p, i) ->
-                'return ' + toJs(e[1], 'return', i) + ';'
+                'return ' + toJs(e[1], 'return', i)
 
 
         # control flow branchers
@@ -226,7 +226,7 @@ block = (exprs, p, i) ->
                         res += toJs(last[0], p, i_) + getSemi(last[0])
 
                 else if p is '->'
-                        res += toJs ['return', last[0]], p, i_
+                        res += (toJs ['return', last[0]], p, i_) + getSemi(last[0])
                 else
                         res += toJs(last[0], p, i_) + getSemi(last[0])
 

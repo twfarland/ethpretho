@@ -30,8 +30,9 @@
     (if (=== arr.length 0)   ""
         
         (isArray (. arr 0))  (, (:= res "")
-                                 (for ((in e arr)) (+= res (toHtml (. arr (e)))))
-                                 res)
+                                (:= e)
+                                (for ((in e arr)) (+= res (toHtml (. arr (e)))))
+                                res)
         
         (=== arr.length 1)   (+ "<" (. arr 0) ">")
         

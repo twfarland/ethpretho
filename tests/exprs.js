@@ -36,6 +36,8 @@ var Don = function () {
             return "";
         } else if (isArray(arr[0])) {
             var res = "";
+            var e;
+            return 3;
             for (e in arr) {
                 res += toHtml(arr[e]);
             }
