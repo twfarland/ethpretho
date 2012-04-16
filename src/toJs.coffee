@@ -35,8 +35,9 @@ pairize = (arr) ->
                         odd = true
         res
 
-branchers     = ['if', 'switch', ',']
+branchers = ['if', 'switch', ',']
 blockCreators = branchers.concat ['for']
+noWrap = ['','=','()','return']
 
 isBrancher = (e) ->
         e[0] and e[0] in branchers
@@ -54,7 +55,7 @@ getSemi = (e) ->
                 ';'
 
 wrap = (res, p) ->
-        if p in ['','=','()'] then res else '(' + res + ')' # wrap if it has a parent
+        if p in noWrap then res else '(' + res + ')' # wrap if it has a parent
 
 
 # primitive exprs - may need to eval to something depending on p
@@ -72,15 +73,21 @@ prim =
                 else
                         toJs(e[1], '=', i) + ' = ' + toJs(e[2], '=', i)
 
-        '.': (e, p, i) ->
-                if toStr.call(e[2]) is obArr
+        '.': (e, p, i) -> # member access
 
-                        if e[2].length is 1
-                                key = e[2][0] # [i]
+                ref = e[2]
+
+                if toStr.call(ref) is obArr
+
+                        if ref.length is 1
+                                key = '[' + ref[0] + ']' # [i]
                         else
-                                return toJs ['.', e[1], 'slice', e[2][0], e[2][1]], p, i # range rewrite -> e.slice(i, j)
+                                return toJs ['.', e[1], 'slice', ref[0], ref[1]], p, i # range rewrite -> e.slice(i, j)
                 else
-                        key = '"'+ e[2] + '"' # ["i"]
+                        if /\d+/.exec(ref)
+                                key = '['+ ref + ']' # ["i"]
+                        else
+                                key = '.' + ref # .i
 
                 if e[3..].length > 0
 
@@ -88,7 +95,8 @@ prim =
                 else
                         fCall = ''
 
-                toJs(e[1], '[]', i) + '[' + key + ']' + fCall
+                toJs(e[1], '[]', i) + key + fCall
+
 
         '->': (e, p, i) -> # function
                 'function (' + e[1].join(', ') + ') ' + block(e[2..], '->', i)
