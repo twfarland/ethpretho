@@ -60,7 +60,10 @@ wrap = (res, p) ->
 # primitive exprs - may need to eval to something depending on p
 prim =
         ':=': (e, p, i) ->
-                'var ' + prim['='] e, p, i
+                if e.length > 2
+                        'var ' + prim['='] e, p, i
+                else
+                        'var ' + e[1] # todo - handle multiple var defs
 
         '=': (e, p, i) ->
                 if toStr.call(e[1]) is obArr
@@ -88,7 +91,7 @@ prim =
                 toJs(e[1], '[]', i) + '[' + key + ']' + fCall
 
         '->': (e, p, i) -> # function
-                '(function (' + e[1].join(', ') + ') ' + block(e[2..], '->', i) + ')'
+                'function (' + e[1].join(', ') + ') ' + block(e[2..], '->', i)
 
         'return': (e, p, i) ->
                 'return ' + toJs(e[1], 'return', i) + ';'
@@ -115,7 +118,7 @@ prim =
                                         prd.splice 0, 2
                         res
                 else
-                        toJs [['->', [], e]], p, i # needs to eval to something, so wrap in self-calling func
+                        wrap (toJs [['->', [], e]], p, i), 'if' # needs to eval to something, so wrap in self-calling func
 
 
         'for': (e, p, i) -> # e.g: (for (clauses) body...) - just the basic js for
@@ -128,7 +131,7 @@ prim =
                         pre     = e.slice 0, -1
                         last    = e.slice -1
 
-                        toJs [ ['->', [], [':=', 'res_', {a: []}], pre.concat([['res_.push', last[0]]]), 'res_'] ], p, i
+                        wrap (toJs [ ['->', [], [':=', 'res_', {a: []}], pre.concat([['res_.push', last[0]]]), 'res_'] ], p, i), 'for'
 
         # open block creators
 

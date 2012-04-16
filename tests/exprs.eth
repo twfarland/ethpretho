@@ -4,16 +4,25 @@
 
 (:= isArray (|| (. Array isArray) 
                 (-> (elem) (=== (. toString call elem) "[object Array]"))))
+
+(:= (isObject x) (=== (toString.call x) "[object Object]"))
+
 (:= (Don)
   
   (:= (inner arr)
     (:= res "")
-    (for ((in e arr)) (:= elem (. arr (e))) (+= res (if (isArray elem) (toHtml elem) elem)))
+    (:= e)
+    (for ((in e arr)) 
+      (:= elem (. arr (e))) 
+      (+= res (if (isArray elem) (toHtml elem) elem)))
     res)
   
   (:= (attrs obj)
     (:= res "")
-    (for ((in k obj)) (:= val (. obj (k))) (+= res (+ " " k "=\"" val "\"")))
+    (:= k)
+    (for ((in k obj)) 
+      (:= val (. obj (k))) 
+      (+= res (+ " " k "=\"" val "\"")))
     res)
   
   (:= (toHtml arr)
