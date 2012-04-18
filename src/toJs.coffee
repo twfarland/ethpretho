@@ -75,7 +75,10 @@ getRef = (e, i) ->
                 '[' + toJs(e, '.', i) + ']'
 
 wrap = (res, p) ->
-        if p in noWrap then res else '(' + res + ')' # wrap if it has a parent
+        if p in noWrap
+                res
+        else
+                '(' + res + ')' # wrap if it has a parent
 
 
 
@@ -129,7 +132,10 @@ prim =
 
         '->': (e, p, i) -> # function
                 res = 'function (' + e[1].join(', ') + ') ' + block(e[2..], '->', i)
-                wrap res, p
+                if p is ''
+                        '(' + res + ')'
+                else
+                        wrap res, p
 
         'return': (e, p, i) ->
                 'return ' + toJs(e[1], 'return', i)

@@ -161,7 +161,11 @@
     '->': function(e, p, i) {
       var res;
       res = 'function (' + e[1].join(', ') + ') ' + block(e.slice(2), '->', i);
-      return wrap(res, p);
+      if (p === '') {
+        return '(' + res + ')';
+      } else {
+        return wrap(res, p);
+      }
     },
     'return': function(e, p, i) {
       return 'return ' + toJs(e[1], 'return', i);
