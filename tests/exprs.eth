@@ -15,3 +15,15 @@
 (. x ([0] 1))
 (. x ("wat" 1))
 (. x ([(y z)] 3))
+                            
+(. (-> () 2) 
+   (select "body") (selectAll "p")
+   (data [4 8 15 16 23 42])
+   (enter) (append "p")
+   (text (-> (d) (+ "I'm number " d "!"))))
+
+(+ 1 (if 1 2 3 4))
+
+(-> () 2)
+
+(+ 1 (-> () 2))

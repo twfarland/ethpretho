@@ -60,9 +60,9 @@ getSemi = (e) ->
 
 argBlock = (exprs, p, i) ->
         if exprs.length is 0
-                ''
+                '()'
         else
-                '(' + (toJs e, p, i for e in exprs).join(', ') + ')'
+                '(' + (toJs e, '()', i for e in exprs).join(', ') + ')'
 
 getRef = (e, i) ->
         if (typeof e is 'string') and isSymbol.exec(e)
@@ -98,7 +98,7 @@ prim =
         '.': (e, p, i) -> # member access, chaining, slices
 
                 mem = e[1]
-                res = mem
+                res = toJs mem, '.', i
                 parts = e[2..]
 
                 for part in parts
@@ -124,7 +124,7 @@ prim =
                 res
 
         '->': (e, p, i) -> # function
-                'function (' + e[1].join(', ') + ') ' + block(e[2..], '->', i)
+                wrap ('function (' + e[1].join(', ') + ') ' + block(e[2..], '->', i)), p
 
         'return': (e, p, i) ->
                 'return ' + toJs(e[1], 'return', i)
@@ -155,10 +155,10 @@ prim =
                 else
                         if e.length is 4
                                 # just use ternary
-                                wrap (toJs ['?'].concat(e[1..])), '?'
+                                toJs ['?'].concat(e[1..]), p, i
                         else
                                 # needs to eval to something, so wrap in self-calling func
-                                wrap (toJs [['->', [], e]], p, i), 'if'
+                                wrap (toJs [['->', [], e]], p, i), 'if', i
 
 
         'switch': (e, p, i) -> # e.g: (switch el case1 res1 (case2 case3) res2 default)
