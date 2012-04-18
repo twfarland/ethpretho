@@ -81,14 +81,14 @@
   argBlock = function(exprs, p, i) {
     var e;
     if (exprs.length === 0) {
-      return '';
+      return '()';
     } else {
       return '(' + ((function() {
         var _i, _len, _results;
         _results = [];
         for (_i = 0, _len = exprs.length; _i < _len; _i++) {
           e = exprs[_i];
-          _results.push(toJs(e, p, i));
+          _results.push(toJs(e, '()', i));
         }
         return _results;
       })()).join(', ') + ')';
@@ -131,14 +131,18 @@
     '.': function(e, p, i) {
       var mem, part, parts, res, _i, _len;
       mem = e[1];
-      res = mem;
+      res = toJs(mem, '.', i);
       parts = e.slice(2);
       for (_i = 0, _len = parts.length; _i < _len; _i++) {
         part = parts[_i];
         if (typeof part === 'string') {
           res += getRef(part, i);
         } else if (toStr.call(part) === obArr) {
-          res += getRef(part[0], i) + argBlock(part.slice(1), '.', i);
+          if (prim[part[0]]) {
+            res += '[' + prim[part[0]](part, '.', i) + ']';
+          } else {
+            res += getRef(part[0], i) + argBlock(part.slice(1), '.', i);
+          }
         } else if (toStr.call(part) === obObj) {
           if (_.key(part) === 's') res += '["' + part.s + '"]';
           if (_.key(part) === 'a') {
@@ -155,7 +159,9 @@
       return res;
     },
     '->': function(e, p, i) {
-      return 'function (' + e[1].join(', ') + ') ' + block(e.slice(2), '->', i);
+      var res;
+      res = 'function (' + e[1].join(', ') + ') ' + block(e.slice(2), '->', i);
+      return wrap(res, p);
     },
     'return': function(e, p, i) {
       return 'return ' + toJs(e[1], 'return', i);
@@ -181,9 +187,9 @@
         return res;
       } else {
         if (e.length === 4) {
-          return wrap(toJs(['?'].concat(e.slice(1))), '?');
+          return toJs(['?'].concat(e.slice(1)), p, i);
         } else {
-          return wrap(toJs([['->', [], e]], p, i), 'if');
+          return wrap(toJs([['->', [], e]], p, i), 'if', i);
         }
       }
     },

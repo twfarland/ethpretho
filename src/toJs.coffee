@@ -107,7 +107,11 @@ prim =
                                 res += getRef part, i # [0]  |  .y
 
                         else if toStr.call(part) is obArr #()
-                                res += getRef(part[0], i) + argBlock(part[1..], '.', i) # .x(1, 2, y(z))  |  [z(x)](1,2)
+
+                                if prim[part[0]]
+                                        res += '[' + prim[part[0]](part, '.', i)  + ']' # x[(true ? 1 : 2)]
+                                else
+                                        res += getRef(part[0], i) + argBlock(part[1..], '.', i) # .x(1, 2, y(z))  |  [z(x)](1,2)
 
                         else if toStr.call(part) is obObj
 
@@ -124,7 +128,8 @@ prim =
                 res
 
         '->': (e, p, i) -> # function
-                wrap ('function (' + e[1].join(', ') + ') ' + block(e[2..], '->', i)), p
+                res = 'function (' + e[1].join(', ') + ') ' + block(e[2..], '->', i)
+                wrap res, p
 
         'return': (e, p, i) ->
                 'return ' + toJs(e[1], 'return', i)
