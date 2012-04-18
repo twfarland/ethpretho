@@ -1,51 +1,17 @@
-(:= root this)
+(. x y z)
+(. x 0)
+(. x "y z")
+(. x [0])
+(. x ["y"])
+(. x [y])
 
-(:= toString (. {} toString))
+(. x (y z) (a b))
 
-(:= isArray (|| (. Array isArray) 
-                (-> (elem) (=== (. toString call elem) "[object Array]"))))
+(. x [0 1])
 
-(:= (isObject x) (=== (toString.call x) "[object Object]"))
+(. x [(y z)] u)
 
-(:= (Don)
-  
-  (:= (inner arr)
-    (:= res "")
-    (:= e)
-    (for ((in e arr)) 
-      (:= elem (. arr (e))) 
-      (+= res (if (isArray elem) (toHtml elem) elem)))
-    res)
-  
-  (:= (attrs obj)
-    (:= res "")
-    (:= k)
-    (for ((in k obj)) 
-      (:= val (. obj (k))) 
-      (+= res (+ " " k "=\"" val "\"")))
-    res)
-  
-  (:= (toHtml arr)
-    
-    (if (=== arr.length 0)   ""
-        
-        (isArray (. arr 0))  (, (:= res "")
-                                (:= e)
-                                (for ((in e arr)) (+= res (toHtml (. arr (e)))))
-                                res)
-        
-        (=== arr.length 1)   (+ "<" (. arr 0) ">")
-        
-        (isObject (. arr 1)) (if (=== arr.length 2) 
-                                 (+ "<" (. arr 0) (attrs (. arr 1)) ">")
-                                 (+ "<" (. arr 0) (attrs (. arr 1)) ">" (inner (. arr (0 2))) "</" (. arr 0) ">"))
-        
-        (+ "<" (. arr 0) (inner (. arr (0 1))) "</" (. arr 0) ">")))
-  
-  (= this.toHtml toHtml)
-  
-  (= (this.render data template key) (toHtml (template data key)))
-  
-  this)
-
-(= root.Don (new (Don)))
+(. x (0 1))
+(. x ([0] 1))
+(. x ("wat" 1))
+(. x ([(y z)] 3))

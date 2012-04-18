@@ -13,9 +13,13 @@ util   = require 'util'
 
 toStr = {}.toString
 obArr = '[object Array]'
+obObj = '[object Object]'
 log = _.log
 
 # utils
+
+isInt = /\d+/
+isSymbol = /^[\_|\|$A-z][\_|\|$A-z|\d]*/
 
 getIndent = (i) ->
         res = ''
@@ -54,8 +58,26 @@ getSemi = (e) ->
         else
                 ';'
 
+argBlock = (exprs, p, i) ->
+        if exprs.length is 0
+                ''
+        else
+                '(' + (toJs e, p, i for e in exprs).join(', ') + ')'
+
+getRef = (e, i) ->
+        if (typeof e is 'string') and isSymbol.exec(e)
+                '.' + e
+
+        else if (toStr.call(e) is obObj) and (_.key(e) is 'a')
+
+                '[' + toJs(e.a[0], '.', i) + ']'
+        else
+                '[' + toJs(e, '.', i) + ']'
+
 wrap = (res, p) ->
         if p in noWrap then res else '(' + res + ')' # wrap if it has a parent
+
+
 
 
 # primitive exprs - may need to eval to something depending on p
@@ -73,30 +95,33 @@ prim =
                 else
                         toJs(e[1], '=', i) + ' = ' + toJs(e[2], '=', i)
 
-        '.': (e, p, i) -> # member access
+        '.': (e, p, i) -> # member access, chaining, slices
 
-                ref = e[2]
+                mem = e[1]
+                res = mem
+                parts = e[2..]
 
-                if toStr.call(ref) is obArr
+                for part in parts
 
-                        if ref.length is 1
-                                key = '[' + ref[0] + ']' # [i]
-                        else
-                                return toJs ['.', e[1], 'slice', ref[0], ref[1]], p, i # range rewrite -> e.slice(i, j)
-                else
-                        if /\d+/.exec(ref)
-                                key = '['+ ref + ']' # ["i"]
-                        else
-                                key = '.' + ref # .i
+                        if typeof part is 'string' # atom
+                                res += getRef part, i # [0]  |  .y
 
-                if e[3..].length > 0
+                        else if toStr.call(part) is obArr #()
+                                res += getRef(part[0], i) + argBlock(part[1..], '.', i) # .x(1, 2, y(z))  |  [z(x)](1,2)
 
-                        fCall = '(' + (toJs(e_, '.', i) for e_ in e[3..]).join(', ') + ')'
-                else
-                        fCall = ''
+                        else if toStr.call(part) is obObj
 
-                toJs(e[1], '[]', i) + key + fCall
+                                if _.key(part) is 's'
+                                        res += '["' + part.s + '"]' # ["x y"]
 
+                                if _.key(part) is 'a'
+                                        if part.a.length is 2
+                                                res += '.slice' + argBlock(part.a[..1], 'slice', i) # .slice(0, x(y))
+                                        else
+                                                res += '[' + toJs(part.a[0], '.', i) + ']' # [x(y)]
+
+                        else throw new Error('Invalid reference')
+                res
 
         '->': (e, p, i) -> # function
                 'function (' + e[1].join(', ') + ') ' + block(e[2..], '->', i)
@@ -104,6 +129,8 @@ prim =
         'return': (e, p, i) ->
                 'return ' + toJs(e[1], 'return', i)
 
+        '?': (e, p, i) ->
+                wrap (toJs(e[1],'()',i) + ' ? ' + toJs(e[2],'()',i) + ' : ' + toJs(e[3],'()',i) ), p
 
         # control flow branchers
 
@@ -126,7 +153,18 @@ prim =
                                         prd.splice 0, 2
                         res
                 else
-                        wrap (toJs [['->', [], e]], p, i), 'if' # needs to eval to something, so wrap in self-calling func
+                        if e.length is 4
+                                # just use ternary
+                                wrap (toJs ['?'].concat(e[1..])), '?'
+                        else
+                                # needs to eval to something, so wrap in self-calling func
+                                wrap (toJs [['->', [], e]], p, i), 'if'
+
+
+        'switch': (e, p, i) -> # e.g: (switch el case1 res1 (case2 case3) res2 default)
+                               # doesn't actually use js 'switch' under the hood. rewrites an if expression.
+                               # because of switch's awkward semantics
+
 
 
         'for': (e, p, i) -> # e.g: (for (clauses) body...) - just the basic js for
@@ -187,15 +225,20 @@ for op in ['*', '/', '%',
 for op in ['++','--']
         prim[op] = unaryPost op
 
-for op in ['typeof', 'new', 'throw']
+for op in ['typeof', 'new', 'throw', '!']
         prim[op] = unaryPr op
 
-for op in ['+', '-', '!']
+for op in ['+', '-']
         prim[op] = dualPr op
 
 
 
-block = (exprs, p, i) ->
+# BLOCK and TOJS form the core. Everything in 'prim' should be hackable.
+# prim could be an object - have reference to this.toJs, this.block, other utils
+
+
+
+block = (exprs, p, i, noBrk = false) ->
 
         # p can only ever be '->' or '' here - it is reset when entering a block.
         # indent all children
@@ -204,6 +247,7 @@ block = (exprs, p, i) ->
         # if you need to ret, and last item is a branch, do the cond, reting all its children
         # if you need to ret, and last item is a loop, make the loop a comprehension
         # reset stk on all top-level elems
+        # noBrk is used in switch statements
 
         pre  = exprs.slice 0, -1
         last = exprs.slice -1
@@ -211,7 +255,7 @@ block = (exprs, p, i) ->
         ind = getIndent i
         i_ = i + 1 # increment indentation level for children
 
-        res = '{\n'
+        unless noBrk then res = '{\n'
 
         if pre.length > 0 # pre elements
 
@@ -230,8 +274,11 @@ block = (exprs, p, i) ->
                 else
                         res += toJs(last[0], p, i_) + getSemi(last[0])
 
-        res + '\n' + getIndent(i - 1) + '}'
+        res += '\n' + getIndent(i - 1)
 
+        unless noBrk then res += '}'
+
+        res
 
 # p is the parent expression, or '', which is a normal block, or '->', which is a function body
 # i is the indentation level, which is increased inside blocks
@@ -255,7 +302,7 @@ toJs = (expr, p = '', i) ->
 
                         else
                                 # user-defined: function call
-                                toJs(first, '', i) + '(' + (toJs e, first, i for e in expr[1..]).join(', ') + ')'
+                                toJs(first, '', i) + argBlock(expr[1..], first, i)
                 else
                         ''
         else
