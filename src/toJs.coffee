@@ -20,7 +20,7 @@ isSymbol = /^[\_|\|$A-z][\_|\|$A-z|\d]*/
 
 
 # container
-treeToJs = ->
+treeToJs = (extra = {}) ->
 
         getIndent = (i) ->
                 res = ''
@@ -59,11 +59,15 @@ treeToJs = ->
                 else
                         ';'
 
-        argBlock = (exprs, p, i) ->
+        sBlock = (sep) -> (exprs, p, i) ->
                 if exprs.length is 0
                         '()'
                 else
-                        '(' + (toJs e, '()', i for e in exprs).join(', ') + ')'
+                        '(' + (toJs e, '()', i for e in exprs).join(sep) + ')'
+
+        argBlock = sBlock ', '
+
+        iniBlock = sBlock '; '
 
         getRef = (e, i) ->
                 if (typeof e is 'string') and isSymbol.exec(e)
@@ -203,7 +207,7 @@ treeToJs = ->
 
                         if p is '->' or p is '' # in open space - just do side effects
 
-                                'for (' + (toJs(e_, '', i) for e_ in e[1]).join('; ')  + ') ' + block(e[2..], '', i)
+                                'for ' + iniBlock(e[1], '()', i) + ' ' + block(e[2..], '', i)
 
                         else    # in an expr - wrap in self-calling func and collect results into array - a REWRITE
                                 pre     = e.slice 0, -1
@@ -254,7 +258,9 @@ treeToJs = ->
         for op in ['+', '-']
                 prim[op] = dualPr op
 
-
+        # extend with any extra primitives
+        for k, v of extra
+                prim[k] = v
 
         # BLOCK and TOJS form the core
         block = (exprs, p, i = 0) ->
@@ -346,7 +352,8 @@ treeToJs = ->
                                 # unhandled case
                                 throw new Error('Unhandled case: ' + util.inspect(expr))
 
-
+        @toJs = toJs
+        @block = block
         @trans = (tree, callback) ->
 
                 callback null, block(tree[0], '', 0)[2..-2]

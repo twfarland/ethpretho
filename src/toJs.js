@@ -24,8 +24,8 @@
 
   isSymbol = /^[\_|\|$A-z][\_|\|$A-z|\d]*/;
 
-  treeToJs = function() {
-    var argBlock, binaryPr, block, blockCreators, branchers, dualPr, getIndent, getRef, getSemi, isBrancher, noWrap, op, pairize, prepBranch, prim, toJs, unaryPost, unaryPr, wrap, _i, _j, _k, _l, _len, _len2, _len3, _len4, _ref, _ref2, _ref3, _ref4;
+  treeToJs = function(extra) {
+    var argBlock, binaryPr, block, blockCreators, branchers, dualPr, e, getIndent, getRef, getSemi, isBrancher, noWrap, op, pairize, prepBranch, prim, toJs, unaryPost, unaryPr, wrap, _i, _j, _k, _l, _len, _len2, _len3, _len4, _len5, _m, _ref, _ref2, _ref3, _ref4;
     getIndent = function(i) {
       var res;
       res = '';
@@ -300,7 +300,7 @@
         }
       };
     };
-    _ref = ['*', '/', '%', '+=', '*=', '/=', '%=', '+=', '-=', '<<=', '>>=', '>>>=', '&=', '^=', '|=', '==', '!=', '===', '!==', '>', '>=', '<', '<=', 'in', 'instanceof', '&&', '||', ','];
+    _ref = ['*', '/', '%', '+=', '*=', '/=', '%=', '+=', '-=', '<<=', '>>=', '>>>=', '&=', '^=', '|=', '==', '!=', '===', '!==', '>', '>=', '<', '<=', 'in', 'of', 'instanceof', '&&', '||', ','];
     for (_i = 0, _len = _ref.length; _i < _len; _i++) {
       op = _ref[_i];
       prim[op] = binaryPr(op);
@@ -320,8 +320,12 @@
       op = _ref4[_l];
       prim[op] = dualPr(op);
     }
+    for (_m = 0, _len5 = extra.length; _m < _len5; _m++) {
+      e = extra[_m];
+      prim[e] = extra[e];
+    }
     block = function(exprs, p, i) {
-      var e, i_, ind, last, pre, res, _len5, _m;
+      var e, i_, ind, last, pre, res, _len6, _n;
       if (i == null) i = 0;
       pre = exprs.slice(0, -1);
       last = exprs.slice(-1);
@@ -329,8 +333,8 @@
       i_ = i + 1;
       res = '{\n';
       if (pre.length > 0) {
-        for (_m = 0, _len5 = pre.length; _m < _len5; _m++) {
-          e = pre[_m];
+        for (_n = 0, _len6 = pre.length; _n < _len6; _n++) {
+          e = pre[_n];
           res += ind + toJs(e, '', i_) + getSemi(e) + '\n';
         }
       }
@@ -369,11 +373,11 @@
           return '"' + expr.s + '"';
         } else if (exprKey === 'a') {
           return '[' + ((function() {
-            var _len5, _m, _ref5, _results;
+            var _len6, _n, _ref5, _results;
             _ref5 = expr.a;
             _results = [];
-            for (_m = 0, _len5 = _ref5.length; _m < _len5; _m++) {
-              e = _ref5[_m];
+            for (_n = 0, _len6 = _ref5.length; _n < _len6; _n++) {
+              e = _ref5[_n];
               _results.push(toJs(e, '[]', i));
             }
             return _results;
@@ -381,10 +385,10 @@
         } else if (exprKey === 'o') {
           pairs = pairize(expr.o);
           return '{' + ((function() {
-            var _len5, _m, _results;
+            var _len6, _n, _results;
             _results = [];
-            for (_m = 0, _len5 = pairs.length; _m < _len5; _m++) {
-              pair = pairs[_m];
+            for (_n = 0, _len6 = pairs.length; _n < _len6; _n++) {
+              pair = pairs[_n];
               _results.push(toJs(pair[0], '{}', i) + ': ' + toJs(pair[1], '{}', i));
             }
             return _results;
@@ -396,6 +400,8 @@
         }
       }
     };
+    this.toJs = toJs;
+    this.block = block;
     this.trans = function(tree, callback) {
       return callback(null, block(tree[0], '', 0).slice(2, -1));
     };
