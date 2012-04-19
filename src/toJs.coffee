@@ -152,9 +152,9 @@ treeToJs = (extra = {}) ->
                 '?': (e, p, i) ->
                         wrap (toJs(e[1],'()',i) + ' ? ' + toJs(e[2],'()',i) + ' : ' + toJs(e[3],'()',i) ), p
 
-                'if': (e, p, i) -> # e.g: (?? (< 2 3) 4 5)
+                'if': (e, p, i) -> # (?? (< 2 3) 4 5)
 
-                        if p in openSpace # just do side effects
+                        if p in openSpace
 
                                 prd = e[1..]
 
@@ -172,10 +172,10 @@ treeToJs = (extra = {}) ->
                                 res
                         else
                                 if e.length is 4
-                                        # just use ternary
+                                        # use ternary
                                         toJs ['?'].concat(e[1..]), p, i
                                 else
-                                        # needs to eval to something, so wrap in self-calling func
+                                        # wrap in self-calling func
                                         wrap (toJs [['->', [], e]], p, i), 'if'
 
                 'switch': (e, p, i) -> # rewrite as an 'if' to avoid handling weird block semantics of switch
@@ -196,7 +196,7 @@ treeToJs = (extra = {}) ->
 
                 'try': (e, p, i) -> # (try e (, stuff) (, catch) (, finally))
 
-                        if p in openSpace # just do side effects
+                        if p in openSpace
 
                                 res = 'try ' + block(prepBranch(e[2]), p, i)
                                 if e[3]
@@ -217,7 +217,7 @@ treeToJs = (extra = {}) ->
 
                 'for': (e, p, i) -> # (for (ini ...) body ...) - just the basic js for
 
-                        if p in openSpace # just do side effects
+                        if p in openSpace
 
                                 'for ' + iniBlock(e[1], '()', i) + ' ' + block(e[2..], '', i)
                         else
