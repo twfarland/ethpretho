@@ -40,8 +40,8 @@ treeToJs = ->
                                 odd = true
                 res
 
-        branchers = ['if', 'switch']
-        blockCreators = branchers.concat ['for']
+        branchers = ['if', 'switch', 'try']
+        blockCreators = branchers.concat ['for', 'while']
         noWrap = ['','=','()','return']
 
         isBrancher = (e) ->
@@ -54,7 +54,7 @@ treeToJs = ->
                         [e]
 
         getSemi = (e) ->
-                if e[0] and (e[0] in blockCreators)
+                if (e[0] and (e[0] in blockCreators)) or e.c
                         ''
                 else
                         ';'
@@ -166,7 +166,7 @@ treeToJs = ->
                                         toJs ['?'].concat(e[1..]), p, i
                                 else
                                         # needs to eval to something, so wrap in self-calling func
-                                        wrap (toJs [['->', [], e]], p, i), 'if', i
+                                        wrap (toJs [['->', [], e]], p, i), 'if'
 
                 'switch': (e, p, i) -> # rewrite as an 'if' to avoid handling weird block semantics of switch
 
@@ -177,14 +177,25 @@ treeToJs = ->
                         until prd.length is 0
 
                                 if prd.length is 1
-                                        res.push [prd[0]] # default case
+                                        res.push prd[0] # default case
                                         prd.splice 0, 1
                                 else
                                         res = res.concat [['===', match, prd[0]], prd[1]]
                                         prd.splice 0, 2
                         toJs res, p, i
 
-                'try': (e, p, i) ->
+                'try': (e, p, i) -> # (try e (, stuff) (, catch) (, finally))
+
+                        if p is '->' or p is '' # in open space - just do side effects
+
+                                res = 'try ' + block(prepBranch(e[2]), p, i)
+                                if e[3]
+                                       res += ' catch (' + toJs(e[1], '()', i) + ') ' + block(prepBranch(e[3]), p, i)
+                                if e[4]
+                                       res += ' finally ' + block(prepBranch(e[4]), p, i)
+                                res
+                        else
+                                wrap (toJs [['->', [], e]], p, i), 'try'
 
                 'while': (e, p, i) ->
 
@@ -227,10 +238,10 @@ treeToJs = ->
                 else
                         wrap (toJs(e_, sym, i) for e_ in e[1..]).join(' ' + sym + ' '), p
 
-        for op in ['*', '/', '%',
-                   '+=', '*=', '/=', '%=', '+=', '-=', '<<=', '>>=', '>>>=', '&=', '^=', '|=',
-                   '==', '!=', '===', '!==', '>', '>=', '<', '<=',
-                   'in', 'instanceof',
+        for op in ['*', '/', '%'
+                   '+=', '*=', '/=', '%=', '+=', '-=', '<<=', '>>=', '>>>=', '&=', '^=', '|='
+                   '==', '!=', '===', '!==', '>', '>=', '<', '<='
+                   'in', 'instanceof'
                    '&&', '||', ',']
                 prim[op] = binaryPr op
 
@@ -246,7 +257,7 @@ treeToJs = ->
 
 
         # BLOCK and TOJS form the core
-        block = (exprs, p, i, noBrk = false) ->
+        block = (exprs, p, i = 0) ->
 
                 # p can only ever be '->' or '' here - it is reset when entering a block.
                 # indent all children
@@ -263,30 +274,25 @@ treeToJs = ->
                 ind = getIndent i
                 i_ = i + 1 # increment indentation level for children
 
-                unless noBrk then res = '{\n'
+                res = '{\n'
 
                 if pre.length > 0 # pre elements
-
                         for e in pre
                                 res += ind + toJs(e, '', i_)  + getSemi(e) + '\n' # reset par - in open block
 
                 if last.length is 1 # last element
-
                         res += ind
+                        e = last[0]
 
-                        if isBrancher last[0]
-                                res += toJs(last[0], p, i_) + getSemi(last[0])
+                        if isBrancher e
+                                res += toJs(e, p, i_) + getSemi(e)
 
                         else if p is '->'
-                                res += (toJs ['return', last[0]], p, i_) + getSemi(last[0])
+                                res += (toJs ['return', e], p, i_) + getSemi(e)
                         else
-                                res += toJs(last[0], p, i_) + getSemi(last[0])
+                                res += toJs(e, p, i_) + getSemi(e)
 
-                res += '\n' + getIndent(i - 1)
-
-                unless noBrk then res += '}'
-
-                res
+                res + '\n' + getIndent(i - 1) + '}'
 
 
         # p is the parent expression, or '', which is a normal block, or '->', which is a function body
@@ -332,6 +338,10 @@ treeToJs = ->
                                 # base primitive: object literal
                                 pairs = pairize expr.o
                                 '{' + (toJs(pair[0], '{}', i) + ': ' + toJs(pair[1], '{}', i) for pair in pairs).join(', ') + '}'
+
+                        else if exprKey is 'c'
+                                '//' + expr.c
+
                         else
                                 # unhandled case
                                 throw new Error('Unhandled case: ' + util.inspect(expr))
@@ -348,12 +358,20 @@ root.treeToJs = new treeToJs()
 
 
 
-parse.parseFile '../tests/exprs.eth', (err, data) ->
+parse.parseFile '../tests/exprs.eth', (err, parseTree) ->
 
-        root.treeToJs.trans data, (err, jsString) ->
+        #console.log parseTree
+
+        root.treeToJs.trans parseTree, (err, jsString) ->
+
+                #console.log jsString
 
                 fs.writeFile '../tests/exprs.js', jsString, (err) ->
+
                         if err
                                 console.log err
                         else
                                 console.log 'saved'
+
+# make test func that collapses whitespace chunks / linebreaks to single whitespace, before comparing
+# or eval the resulting js to get a result

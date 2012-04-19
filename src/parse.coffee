@@ -25,9 +25,17 @@ involve = (expr, stack) ->
 deeper = (expr, stack) ->
         stack.put expr
 
-
 # matchers :: [[str, expressor, stackMutator]]
 matchers = [
+
+        ['comment'
+        (str) ->
+                if str[0] is ';'
+                        [res, rest] = ['', str[1..]]
+                        for c, k in rest
+                                if c is '\n' then break else res += c
+                        [{c: res}, res.length + 2]
+        ]
 
         ['string' # consumes whole string
         (str) ->

@@ -37,6 +37,26 @@
 
   matchers = [
     [
+      'comment', function(str) {
+        var c, k, res, rest, _len, _ref;
+        if (str[0] === ';') {
+          _ref = ['', str.slice(1)], res = _ref[0], rest = _ref[1];
+          for (k = 0, _len = rest.length; k < _len; k++) {
+            c = rest[k];
+            if (c === '\n') {
+              break;
+            } else {
+              res += c;
+            }
+          }
+          return [
+            {
+              c: res
+            }, res.length + 2
+          ];
+        }
+      }
+    ], [
       'string', function(str) {
         var c, k, res, rest, _len, _ref;
         if (str[0] === '"') {

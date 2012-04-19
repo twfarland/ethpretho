@@ -50,8 +50,8 @@
       }
       return res;
     };
-    branchers = ['if', 'switch'];
-    blockCreators = branchers.concat(['for']);
+    branchers = ['if', 'switch', 'try'];
+    blockCreators = branchers.concat(['for', 'while']);
     noWrap = ['', '=', '()', 'return'];
     isBrancher = function(e) {
       var _ref;
@@ -66,7 +66,7 @@
     };
     getSemi = function(e) {
       var _ref;
-      if (e[0] && (_ref = e[0], __indexOf.call(blockCreators, _ref) >= 0)) {
+      if ((e[0] && (_ref = e[0], __indexOf.call(blockCreators, _ref) >= 0)) || e.c) {
         return '';
       } else {
         return ';';
@@ -184,7 +184,7 @@
           if (e.length === 4) {
             return toJs(['?'].concat(e.slice(1)), p, i);
           } else {
-            return wrap(toJs([['->', [], e]], p, i), 'if', i);
+            return wrap(toJs([['->', [], e]], p, i), 'if');
           }
         }
       },
@@ -195,7 +195,7 @@
         prd = e.slice(2);
         while (prd.length !== 0) {
           if (prd.length === 1) {
-            res.push([prd[0]]);
+            res.push(prd[0]);
             prd.splice(0, 1);
           } else {
             res = res.concat([['===', match, prd[0]], prd[1]]);
@@ -204,7 +204,19 @@
         }
         return toJs(res, p, i);
       },
-      'try': function(e, p, i) {},
+      'try': function(e, p, i) {
+        var res;
+        if (p === '->' || p === '') {
+          res = 'try ' + block(prepBranch(e[2]), p, i);
+          if (e[3]) {
+            res += ' catch (' + toJs(e[1], '()', i) + ') ' + block(prepBranch(e[3]), p, i);
+          }
+          if (e[4]) res += ' finally ' + block(prepBranch(e[4]), p, i);
+          return res;
+        } else {
+          return wrap(toJs([['->', [], e]], p, i), 'try');
+        }
+      },
       'while': function(e, p, i) {},
       'for': function(e, p, i) {
         var e_, last, pre;
@@ -308,14 +320,14 @@
       op = _ref4[_l];
       prim[op] = dualPr(op);
     }
-    block = function(exprs, p, i, noBrk) {
+    block = function(exprs, p, i) {
       var e, i_, ind, last, pre, res, _len5, _m;
-      if (noBrk == null) noBrk = false;
+      if (i == null) i = 0;
       pre = exprs.slice(0, -1);
       last = exprs.slice(-1);
       ind = getIndent(i);
       i_ = i + 1;
-      if (!noBrk) res = '{\n';
+      res = '{\n';
       if (pre.length > 0) {
         for (_m = 0, _len5 = pre.length; _m < _len5; _m++) {
           e = pre[_m];
@@ -324,17 +336,16 @@
       }
       if (last.length === 1) {
         res += ind;
-        if (isBrancher(last[0])) {
-          res += toJs(last[0], p, i_) + getSemi(last[0]);
+        e = last[0];
+        if (isBrancher(e)) {
+          res += toJs(e, p, i_) + getSemi(e);
         } else if (p === '->') {
-          res += (toJs(['return', last[0]], p, i_)) + getSemi(last[0]);
+          res += (toJs(['return', e], p, i_)) + getSemi(e);
         } else {
-          res += toJs(last[0], p, i_) + getSemi(last[0]);
+          res += toJs(e, p, i_) + getSemi(e);
         }
       }
-      res += '\n' + getIndent(i - 1);
-      if (!noBrk) res += '}';
-      return res;
+      return res + '\n' + getIndent(i - 1) + '}';
     };
     toJs = function(expr, p, i) {
       var e, exprKey, first, pair, pairs;
@@ -378,6 +389,8 @@
             }
             return _results;
           })()).join(', ') + '}';
+        } else if (exprKey === 'c') {
+          return '//' + expr.c;
         } else {
           throw new Error('Unhandled case: ' + util.inspect(expr));
         }
@@ -391,8 +404,8 @@
 
   root.treeToJs = new treeToJs();
 
-  parse.parseFile('../tests/exprs.eth', function(err, data) {
-    return root.treeToJs.trans(data, function(err, jsString) {
+  parse.parseFile('../tests/exprs.eth', function(err, parseTree) {
+    return root.treeToJs.trans(parseTree, function(err, jsString) {
       return fs.writeFile('../tests/exprs.js', jsString, function(err) {
         if (err) {
           return console.log(err);
