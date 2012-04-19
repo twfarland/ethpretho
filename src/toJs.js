@@ -25,7 +25,8 @@
   isSymbol = /^[\_|\|$A-z][\_|\|$A-z|\d]*/;
 
   treeToJs = function(extra) {
-    var argBlock, binaryPr, block, blockCreators, branchers, dualPr, e, getIndent, getRef, getSemi, isBrancher, noWrap, op, pairize, prepBranch, prim, toJs, unaryPost, unaryPr, wrap, _i, _j, _k, _l, _len, _len2, _len3, _len4, _len5, _m, _ref, _ref2, _ref3, _ref4;
+    var argBlock, binaryPr, block, blockCreators, branchers, dualPr, getIndent, getRef, getSemi, iniBlock, isBrancher, k, noWrap, op, openSpace, pairize, prepBranch, prim, sBlock, selfCollect, toJs, unaryPost, unaryPr, v, wrap, _i, _j, _k, _l, _len, _len2, _len3, _len4, _ref, _ref2, _ref3, _ref4;
+    if (extra == null) extra = {};
     getIndent = function(i) {
       var res;
       res = '';
@@ -53,6 +54,7 @@
     branchers = ['if', 'switch', 'try'];
     blockCreators = branchers.concat(['for', 'while']);
     noWrap = ['', '=', '()', 'return'];
+    openSpace = ['->', ''];
     isBrancher = function(e) {
       var _ref;
       return e[0] && (_ref = e[0], __indexOf.call(branchers, _ref) >= 0);
@@ -72,22 +74,26 @@
         return ';';
       }
     };
-    argBlock = function(exprs, p, i) {
-      var e;
-      if (exprs.length === 0) {
-        return '()';
-      } else {
-        return '(' + ((function() {
-          var _i, _len, _results;
-          _results = [];
-          for (_i = 0, _len = exprs.length; _i < _len; _i++) {
-            e = exprs[_i];
-            _results.push(toJs(e, '()', i));
-          }
-          return _results;
-        })()).join(', ') + ')';
-      }
+    sBlock = function(sep) {
+      return function(exprs, p, i) {
+        var e;
+        if (exprs.length === 0) {
+          return '()';
+        } else {
+          return '(' + ((function() {
+            var _i, _len, _results;
+            _results = [];
+            for (_i = 0, _len = exprs.length; _i < _len; _i++) {
+              e = exprs[_i];
+              _results.push(toJs(e, '()', i));
+            }
+            return _results;
+          })()).join(sep) + ')';
+        }
+      };
     };
+    argBlock = sBlock(', ');
+    iniBlock = sBlock('; ');
     getRef = function(e, i) {
       if ((typeof e === 'string') && isSymbol.exec(e)) {
         return '.' + e;
@@ -103,6 +109,20 @@
       } else {
         return '(' + res + ')';
       }
+    };
+    selfCollect = function(e, p, i) {
+      var last, pre;
+      pre = e.slice(0, -1);
+      last = e.slice(-1);
+      return wrap(toJs([
+        [
+          '->', [], [
+            ':=', 'res_', {
+              a: []
+            }
+          ], pre.concat([['res_.push', last[0]]]), 'res_'
+        ]
+      ], p, i), e[0]);
     };
     prim = {
       ':=': function(e, p, i) {
@@ -166,7 +186,7 @@
       },
       'if': function(e, p, i) {
         var prd, res;
-        if (p === '->' || p === '') {
+        if (__indexOf.call(openSpace, p) >= 0) {
           prd = e.slice(1);
           res = 'if (' + toJs(prd[0], '()', i) + ') ' + block(prepBranch(prd[1]), p, i);
           prd.splice(0, 2);
@@ -206,7 +226,7 @@
       },
       'try': function(e, p, i) {
         var res;
-        if (p === '->' || p === '') {
+        if (__indexOf.call(openSpace, p) >= 0) {
           res = 'try ' + block(prepBranch(e[2]), p, i);
           if (e[3]) {
             res += ' catch (' + toJs(e[1], '()', i) + ') ' + block(prepBranch(e[3]), p, i);
@@ -217,32 +237,18 @@
           return wrap(toJs([['->', [], e]], p, i), 'try');
         }
       },
-      'while': function(e, p, i) {},
-      'for': function(e, p, i) {
-        var e_, last, pre;
-        if (p === '->' || p === '') {
-          return 'for (' + ((function() {
-            var _i, _len, _ref, _results;
-            _ref = e[1];
-            _results = [];
-            for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-              e_ = _ref[_i];
-              _results.push(toJs(e_, '', i));
-            }
-            return _results;
-          })()).join('; ') + ') ' + block(e.slice(2), '', i);
+      'while': function(e, p, i) {
+        if (__indexOf.call(openSpace, p) >= 0) {
+          return 'while ' + iniBlock([e[1]], '()', i) + ' ' + block(e.slice(2), '', i);
         } else {
-          pre = e.slice(0, -1);
-          last = e.slice(-1);
-          return wrap(toJs([
-            [
-              '->', [], [
-                ':=', 'res_', {
-                  a: []
-                }
-              ], pre.concat([['res_.push', last[0]]]), 'res_'
-            ]
-          ], p, i), 'for');
+          return selfCollect(e, p, i);
+        }
+      },
+      'for': function(e, p, i) {
+        if (__indexOf.call(openSpace, p) >= 0) {
+          return 'for ' + iniBlock(e[1], '()', i) + ' ' + block(e.slice(2), '', i);
+        } else {
+          return selfCollect(e, p, i);
         }
       }
     };
@@ -320,12 +326,12 @@
       op = _ref4[_l];
       prim[op] = dualPr(op);
     }
-    for (_m = 0, _len5 = extra.length; _m < _len5; _m++) {
-      e = extra[_m];
-      prim[e] = extra[e];
+    for (k in extra) {
+      v = extra[k];
+      prim[k] = v;
     }
     block = function(exprs, p, i) {
-      var e, i_, ind, last, pre, res, _len6, _n;
+      var e, i_, ind, last, pre, res, _len5, _m;
       if (i == null) i = 0;
       pre = exprs.slice(0, -1);
       last = exprs.slice(-1);
@@ -333,8 +339,8 @@
       i_ = i + 1;
       res = '{\n';
       if (pre.length > 0) {
-        for (_n = 0, _len6 = pre.length; _n < _len6; _n++) {
-          e = pre[_n];
+        for (_m = 0, _len5 = pre.length; _m < _len5; _m++) {
+          e = pre[_m];
           res += ind + toJs(e, '', i_) + getSemi(e) + '\n';
         }
       }
@@ -373,11 +379,11 @@
           return '"' + expr.s + '"';
         } else if (exprKey === 'a') {
           return '[' + ((function() {
-            var _len6, _n, _ref5, _results;
+            var _len5, _m, _ref5, _results;
             _ref5 = expr.a;
             _results = [];
-            for (_n = 0, _len6 = _ref5.length; _n < _len6; _n++) {
-              e = _ref5[_n];
+            for (_m = 0, _len5 = _ref5.length; _m < _len5; _m++) {
+              e = _ref5[_m];
               _results.push(toJs(e, '[]', i));
             }
             return _results;
@@ -385,10 +391,10 @@
         } else if (exprKey === 'o') {
           pairs = pairize(expr.o);
           return '{' + ((function() {
-            var _len6, _n, _results;
+            var _len5, _m, _results;
             _results = [];
-            for (_n = 0, _len6 = pairs.length; _n < _len6; _n++) {
-              pair = pairs[_n];
+            for (_m = 0, _len5 = pairs.length; _m < _len5; _m++) {
+              pair = pairs[_m];
               _results.push(toJs(pair[0], '{}', i) + ': ' + toJs(pair[1], '{}', i));
             }
             return _results;

@@ -239,7 +239,7 @@ try {
 for (i in x) {
     j + i;
 }
-for (i = 0; i < 10; i++) {
+for (i = 0; i < 10; i++, i) {
     j + i;
 }
 1 + ((function () {
@@ -292,5 +292,82 @@ for (i = 0; i < 10; i++) {
         return res_;
     })())
 });
-//while
-//membership variations
+while (x > 1) {
+    y.push(x);
+    x--;
+}
+1 + ((function () {
+    var res_ = [];
+    while (x > 1) {
+        y.push(x);
+        res_.push(x--, x);
+    }
+    return res_;
+})());
+(function () {
+    return ((function () {
+        var res_ = [];
+        while (x > 1) {
+            y.push(x);
+            res_.push(x--, x);
+        }
+        return res_;
+    })())
+});
+(function () {
+    x;
+    return ((function () {
+        var res_ = [];
+        while (x > 1) {
+            y.push(x);
+            res_.push(x--, x);
+        }
+        return res_;
+    })())
+});
+(function () {
+    while (x > 1) {
+        y.push(x);
+        x--;
+    }
+    return x;
+});
+x.y.z;
+x[0];
+x["y z"];
+x[0];
+x[y];
+x["y z"];
+x[y(z)];
+x[(a ? b : c)];
+x[(a ? b : c)];
+x[((function () {
+    var res_ = [];
+    for () {
+        res_.push(y);
+    }
+    return res_;
+})())];
+x.y();
+x.y(1).z(2, 3).a;
+x[0](1);
+x[(a ? b : c)](1);
+x["a"](2);
+x.slice(0, 1);
+x[y(z)](1);
+x[y(z)](1);
+{a: 1}.a;
+[1, 2, 3][0];
+((function () {
+    if (a) {
+        return b;
+    } else if (c) {
+        return d;
+    }
+})())[((function () {
+    if (a) {
+        return b;
+    } else if (c) {
+        return d;
+    }
+})())];

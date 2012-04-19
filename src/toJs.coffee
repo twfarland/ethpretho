@@ -43,6 +43,7 @@ treeToJs = (extra = {}) ->
         branchers = ['if', 'switch', 'try']
         blockCreators = branchers.concat ['for', 'while']
         noWrap = ['','=','()','return']
+        openSpace = ['->', '']
 
         isBrancher = (e) ->
                 e[0] and e[0] in branchers
@@ -85,6 +86,11 @@ treeToJs = (extra = {}) ->
                 else
                         '(' + res + ')' # wrap if it has a parent
 
+        selfCollect = (e, p, i) ->
+                pre = e.slice 0, -1
+                last = e.slice -1
+
+                wrap (toJs [ ['->', [], [':=', 'res_', {a: []}], pre.concat([['res_.push', last[0]]]), 'res_'] ], p, i), e[0]
 
         # primitive exprs - may need to eval to something depending on p
         prim =
@@ -148,7 +154,7 @@ treeToJs = (extra = {}) ->
 
                 'if': (e, p, i) -> # e.g: (?? (< 2 3) 4 5)
 
-                        if p is '->' or p is '' # in open space - just do side effects
+                        if p in openSpace # just do side effects
 
                                 prd = e[1..]
 
@@ -190,7 +196,7 @@ treeToJs = (extra = {}) ->
 
                 'try': (e, p, i) -> # (try e (, stuff) (, catch) (, finally))
 
-                        if p is '->' or p is '' # in open space - just do side effects
+                        if p in openSpace # just do side effects
 
                                 res = 'try ' + block(prepBranch(e[2]), p, i)
                                 if e[3]
@@ -201,19 +207,21 @@ treeToJs = (extra = {}) ->
                         else
                                 wrap (toJs [['->', [], e]], p, i), 'try'
 
-                'while': (e, p, i) ->
+                'while': (e, p, i) -> # (while clause body ...)
 
-                'for': (e, p, i) -> # e.g: (for (clauses) body...) - just the basic js for
+                        if p in openSpace
 
-                        if p is '->' or p is '' # in open space - just do side effects
+                                'while ' + iniBlock([e[1]], '()', i) + ' ' + block(e[2..], '', i)
+                        else
+                                selfCollect e, p, i
+
+                'for': (e, p, i) -> # (for (ini ...) body ...) - just the basic js for
+
+                        if p in openSpace # just do side effects
 
                                 'for ' + iniBlock(e[1], '()', i) + ' ' + block(e[2..], '', i)
-
-                        else    # in an expr - wrap in self-calling func and collect results into array - a REWRITE
-                                pre     = e.slice 0, -1
-                                last    = e.slice -1
-
-                                wrap (toJs [ ['->', [], [':=', 'res_', {a: []}], pre.concat([['res_.push', last[0]]]), 'res_'] ], p, i), 'for'
+                        else
+                                selfCollect e, p, i
 
 
 
