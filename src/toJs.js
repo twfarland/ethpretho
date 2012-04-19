@@ -416,16 +416,4 @@
 
   root.treeToJs = new treeToJs();
 
-  parse.parseFile('../tests/exprs.eth', function(err, parseTree) {
-    return root.treeToJs.trans(parseTree, function(err, jsString) {
-      return fs.writeFile('../tests/exprs.js', jsString, function(err) {
-        if (err) {
-          return console.log(err);
-        } else {
-          return console.log('saved');
-        }
-      });
-    });
-  });
-
 }).call(this);

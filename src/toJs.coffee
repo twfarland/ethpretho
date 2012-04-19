@@ -370,23 +370,3 @@ treeToJs = (extra = {}) ->
 
 
 root.treeToJs = new treeToJs()
-
-
-
-parse.parseFile '../tests/exprs.eth', (err, parseTree) ->
-
-        #console.log parseTree
-
-        root.treeToJs.trans parseTree, (err, jsString) ->
-
-                #console.log jsString
-
-                fs.writeFile '../tests/exprs.js', jsString, (err) ->
-
-                        if err
-                                console.log err
-                        else
-                                console.log 'saved'
-
-# make test func that collapses whitespace chunks / linebreaks to single whitespace, before comparing
-# or eval the resulting js to get a result

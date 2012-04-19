@@ -19,8 +19,11 @@ defaultAlter = (expr, stack) ->
                 _.val(lower).push expr
 
 involve = (expr, stack) ->
-        expr = stack.take()
-        defaultAlter expr, stack
+        try
+                expr = stack.take()
+                defaultAlter expr, stack
+        catch e
+                throw new Error("Parse error: " + JSON.stringify(stack))
 
 deeper = (expr, stack) ->
         stack.put expr
@@ -130,10 +133,13 @@ makeTree = (str, stack) ->
                                 (m[2] or defaultAlter) match[0], stack
                                 chars.splice 0, match[1]
                                 break
-        stack
+        if stack.length is 1
+                stack
+        else
+                throw new Error('Parse error: ' + JSON.stringify(stack))
 
 
-# async parse
+
 parseFile = (file, callback) ->
         fs.readFile file, 'utf-8', (err, data) ->
                 callback err, makeTree(data, [[]])
@@ -141,6 +147,3 @@ parseFile = (file, callback) ->
 
 
 root.parseFile = parseFile
-
-
-# todo - throw syntax errors!

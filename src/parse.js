@@ -27,8 +27,12 @@
   };
 
   involve = function(expr, stack) {
-    expr = stack.take();
-    return defaultAlter(expr, stack);
+    try {
+      expr = stack.take();
+      return defaultAlter(expr, stack);
+    } catch (e) {
+      throw new Error("Parse error: " + JSON.stringify(stack));
+    }
   };
 
   deeper = function(expr, stack) {
@@ -174,7 +178,11 @@
         }
       }
     }
-    return stack;
+    if (stack.length === 1) {
+      return stack;
+    } else {
+      throw new Error('Parse error: ' + JSON.stringify(stack));
+    }
   };
 
   parseFile = function(file, callback) {

@@ -3,7 +3,7 @@
 symbol;
 1234.50;
 /regex/g;
-// comment
+// comment 
 [1, 2, 3];
 {a: 1, b: 2};
 {"a b": 1, "x y": 2};
