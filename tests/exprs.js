@@ -81,48 +81,216 @@ if (x === a) {
 } else {
     e;
 }
+if (x === a) {
+    b;
+    c;
+} else if (x === d) {
+    e;
+}
+if (x === a) {
+    if (a === b) {
+        c;
+    }
+} else {
+    d;
+}
+try {
+    x;
+}
+try {
+    x;
+} catch (e) {
+    y;
+}
+try {
+    x;
+} catch (e) {
+    y;
+} finally {
+    z;
+}
+try {
+    x;
+    y;
+} catch (e) {
+    x(e);
+    y(e);
+} finally {
+    z();
+}
+1 + ((function () {
+    if (x) {
+        return y;
+    }
+})());
+1 + (x ? y , z : a , b);
+1 + ((function () {
+    if (x === a) {
+        return b;
+    }
+})());
+1 + (x === a ? ((function () {
+    if (a === b) {
+        return c;
+    }
+})()) : d);
+1 + ((function () {
+    try {
+        return x;
+    }
+})());
+1 + ((function () {
+    try {
+        x;
+        return y;
+    } catch (e) {
+        x(e);
+        return y(e);
+    } finally {
+        return z();
+    }
+})());
 (function () {
     if (x) {
         return y;
     }
 });
 (function () {
+    x;
     if (x) {
         return y;
-    } else {
-        return z;
     }
 });
 (function () {
     if (x) {
         y;
-        return z;
-    } else {
-        return a;
     }
+    return x;
 });
 (function () {
-    x++;
     if (x) {
         y;
         return z;
-    } else {
+    } else if (y) {
         a;
+        return b;
+    } else {
+        if (e) {
+            return f;
+        } else if (g) {
+            return h;
+        }
+    }
+});
+(function () {
+    if (x === a) {
         return b;
     }
 });
 (function () {
-    if (x) {
-        y;
-    } else if (z) {
-        a;
+    x;
+    if (x === a) {
+        return b;
+    }
+});
+(function () {
+    if (x === a) {
+        b;
     }
     return x;
 });
-1 + (x ? y : z);
-1 + (x ? y , z : a);
-1 + (a === x ? y : a , b);
-//for, nested, infunc
+(function () {
+    if (x === a) {
+        if (a === b) {
+            return c;
+        }
+    } else {
+        return d;
+    }
+});
+(function () {
+    try {
+        return x;
+    }
+});
+(function () {
+    x;
+    try {
+        return x;
+    }
+});
+(function () {
+    try {
+        x;
+    }
+    return x;
+});
+(function () {
+    try {
+        x;
+        return y;
+    } catch (e) {
+        x(e);
+        return y(e);
+    } finally {
+        return z();
+    }
+});
+for (i in x) {
+    j + i;
+}
+for (i = 0; i < 10; i++) {
+    j + i;
+}
+1 + ((function () {
+    var res_ = [];
+    for (i in x) {
+        res_.push(j + i);
+    }
+    return res_;
+})());
+1 + ((function () {
+    var res_ = [];
+    for (i in x) {
+        y = z;
+        res_.push(j + i);
+    }
+    return res_;
+})());
+(function () {
+    return ((function () {
+        var res_ = [];
+        for (i in x) {
+            res_.push(j + i);
+        }
+        return res_;
+    })())
+});
+(function () {
+    x;
+    return ((function () {
+        var res_ = [];
+        for (i in x) {
+            res_.push(j + i);
+        }
+        return res_;
+    })())
+});
+(function () {
+    for (i in x) {
+        j + i;
+    }
+    return x;
+});
+(function () {
+    return ((function () {
+        var res_ = [];
+        for (i in x) {
+            y = z;
+            res_.push(j + i);
+        }
+        return res_;
+    })())
+});
 //while
-//try/catch
 //membership variations

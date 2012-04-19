@@ -1,3 +1,5 @@
+(try e y)
+
 1
 "string"
 symbol
@@ -35,14 +37,17 @@ symbol
 (switch x a b)
 (switch x a b c)
 (switch x a b c d e)
-(switch x a (, b c) d e)
-(switch x a (switch a b c) d) 
 
-(try e x)
-(try e x y)
-(try e x y z)
-(try e (, x y) (, (x e) (y e)) (z))
+(-> () (if x y))
+(-> () (if x y z))
+(-> () (if x (, y z) a))
+(-> () (++ x) (if x (, y z) (, a b)))
+(-> () (if x y z a) x)
 
+(+ 1 (if x y z))
+(+ 1 (if x (, y z) a))
+(+ 1 (switch a x y (, a b)))
+ 
  
 ;for, nested, infunc
 
