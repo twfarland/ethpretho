@@ -1,7 +1,7 @@
-"a";
-1 + y(z);
-werwer;
-{a: 1, b: [1, 2, 3]};
-// comment
-yep;
-wat.up(yall);
+(x || y)(z);
+(x || y);
+if ((x && z) || y) {
+    3;
+} else {
+    4;
+}

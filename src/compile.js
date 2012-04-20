@@ -1,15 +1,13 @@
 (function() {
-  var args, compile, fs, parse, root, treeToJs, _;
+  var args, compile, fs, parse, root, treeToJs;
 
-  root = this;
-
-  _ = require('./utils.js');
+  fs = require('fs');
 
   parse = require('./parse.js').parseFile;
 
   treeToJs = require('./toJs.js').treeToJs;
 
-  fs = require('fs');
+  root = this;
 
   args = process.argv;
 

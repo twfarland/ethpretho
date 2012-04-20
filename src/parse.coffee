@@ -1,8 +1,7 @@
-root  = @
-
 fs = require 'fs'
 _  = require './help.js'
 
+root  = @
 
 # stackMutator :: expr, stack -> _ (mutates stack)
 defaultAlter = (expr, stack) ->
@@ -40,6 +39,21 @@ matchers = [
                         [{s: chomp[0][1..-2]}, chomp[0].length]
         ]
 
+        ['space'
+        (str) ->
+                chomp = _.isSpace.exec(str)
+                if chomp
+                        [{w: chomp[0]}, chomp[0].length]
+        (expr, stack) -> false
+        ]
+
+        ['atom'
+        (str) ->
+                chomp = _.isAtom.exec(str)
+                if chomp
+                        [chomp[0], chomp[0].length]
+        ]
+
         ['openexp'
         (str) -> if str[0] is '(' then [[], 1]
         deeper
@@ -68,21 +82,6 @@ matchers = [
         ['closeobj'
         (str) -> if str[0] is '}' then [null, 1]
         involve
-        ]
-
-        ['space'
-        (str) ->
-                chomp = _.isSpace.exec(str)
-                if chomp
-                        [{w: chomp[0]}, chomp[0].length]
-        (expr, stack) -> false
-        ]
-
-        ['atom'
-        (str) ->
-                chomp = _.isAtom.exec(str)
-                if chomp
-                        [chomp[0], chomp[0].length]
         ]
 
         ['nomatch' # debug - makes sure it terminates if nothing matches

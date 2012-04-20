@@ -1,11 +1,11 @@
 (function() {
   var deeper, defaultAlter, fs, involve, makeTree, matchers, parseFile, root, _;
 
-  root = this;
-
   fs = require('fs');
 
   _ = require('./help.js');
+
+  root = this;
 
   defaultAlter = function(expr, stack) {
     var lower;
@@ -56,6 +56,26 @@
         }
       }
     ], [
+      'space', function(str) {
+        var chomp;
+        chomp = _.isSpace.exec(str);
+        if (chomp) {
+          return [
+            {
+              w: chomp[0]
+            }, chomp[0].length
+          ];
+        }
+      }, function(expr, stack) {
+        return false;
+      }
+    ], [
+      'atom', function(str) {
+        var chomp;
+        chomp = _.isAtom.exec(str);
+        if (chomp) return [chomp[0], chomp[0].length];
+      }
+    ], [
       'openexp', function(str) {
         if (str[0] === '(') return [[], 1];
       }, deeper
@@ -91,26 +111,6 @@
       'closeobj', function(str) {
         if (str[0] === '}') return [null, 1];
       }, involve
-    ], [
-      'space', function(str) {
-        var chomp;
-        chomp = _.isSpace.exec(str);
-        if (chomp) {
-          return [
-            {
-              w: chomp[0]
-            }, chomp[0].length
-          ];
-        }
-      }, function(expr, stack) {
-        return false;
-      }
-    ], [
-      'atom', function(str) {
-        var chomp;
-        chomp = _.isAtom.exec(str);
-        if (chomp) return [chomp[0], chomp[0].length];
-      }
     ], [
       'nomatch', function(str) {
         return [' ', 1];

@@ -53,7 +53,7 @@
     };
     branchers = ['if', 'switch', 'try'];
     blockCreators = branchers.concat(['for', 'while']);
-    noWrap = ['', '=', '()', 'return'];
+    noWrap = ['=', '()', 'return'];
     openSpace = ['->', ''];
     isBrancher = function(e) {
       var _ref;

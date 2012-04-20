@@ -1,11 +1,10 @@
-root = @
-
-_      = require './utils.js'
-parse  = require('./parse.js').parseFile
+fs        = require 'fs'
+parse     = require('./parse.js').parseFile
 treeToJs  = require('./toJs.js').treeToJs
-fs     = require 'fs'
 
-args = process.argv
+root      = @
+
+args      = process.argv
 
 
 compile = (file) ->

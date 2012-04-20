@@ -36,7 +36,7 @@ treeToJs = (extra = {}) ->
 
         branchers = ['if', 'switch', 'try']
         blockCreators = branchers.concat ['for', 'while']
-        noWrap = ['','=','()','return']
+        noWrap = ['=','()','return']
         openSpace = ['->', '']
 
         isBrancher = (e) ->
