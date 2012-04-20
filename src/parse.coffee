@@ -1,54 +1,43 @@
 root  = @
 
 fs = require 'fs'
-_  = require './utils.js'
-
-Array::put = Array::unshift
-Array::take = Array::shift
-
-toStr = {}.toString
-obArr = '[object Array]'
+_  = require './help.js'
 
 
 # stackMutator :: expr, stack -> _ (mutates stack)
 defaultAlter = (expr, stack) ->
         lower = stack[0]
-        if toStr.call(lower) is obArr
+        if _.toStr.call(lower) is _.obArr
                 lower.push expr
         else
                 _.val(lower).push expr
 
 involve = (expr, stack) ->
         try
-                expr = stack.take()
+                expr = stack.shift()
                 defaultAlter expr, stack
         catch e
                 throw new Error("Parse error: " + JSON.stringify(stack))
 
 deeper = (expr, stack) ->
-        stack.put expr
+        stack.unshift expr
+
 
 # matchers :: [[str, expressor, stackMutator]]
 matchers = [
 
         ['comment'
         (str) ->
-                if str[0] is ';'
-                        [res, rest] = ['', str[1..]]
-                        for c, k in rest
-                                if c is '\n' then break else res += c
-                        [{c: res}, res.length + 2]
+                chomp = _.isComment.exec(str)
+                if chomp
+                        [{c: chomp[0][1..]}, chomp[0].length]
         ]
 
         ['string' # consumes whole string
         (str) ->
-                 if str[0] is '"'
-                        [res, rest] = ['', str[1..]]
-
-                        for c, k in rest
-                                if (c is '"') and (rest[k - 1] isnt '\\') then break else res += c
-
-                        [{s: res}, res.length + 2]
+                chomp = _.isStr.exec(str)
+                if chomp
+                        [{s: chomp[0][1..-2]}, chomp[0].length]
         ]
 
         ['openexp'
@@ -81,38 +70,24 @@ matchers = [
         involve
         ]
 
-        ['line'
-        (str) -> if str[0] is '\n' then ['\n', 1]
-        (expr, stack) -> false
-        ]
-
         ['space'
         (str) ->
-                if str[0] is ' '
-                        res = ' '
-                        for c, k in str[1..]
-                                if c is ' ' then res += ' ' else break
-
-                        [{w: res}, res.length]
-
+                chomp = _.isSpace.exec(str)
+                if chomp
+                        [{w: chomp[0]}, chomp[0].length]
         (expr, stack) -> false
         ]
 
         ['atom'
-
         (str) ->
-                res = ''
-                for c, k in str
-                        next = str[k + 1]
-
-                        if next and (next in ' \n\t()[]{}"')
-                                res += c
-                                break
-                        else
-                                res += c
-
-                [res, res.length]
+                chomp = _.isAtom.exec(str)
+                if chomp
+                        [chomp[0], chomp[0].length]
         ]
+
+        ['nomatch' # debug - makes sure it terminates if nothing matches
+        (str) ->
+                [' ', 1]]
 ]
 
 
@@ -120,18 +95,16 @@ matchers = [
 # the stack accumulates syntax nodes as the str is consumed
 makeTree = (str, stack) ->
 
-        chars = [].slice.call str
 
-        until chars.length is 0
+        until str.length is 0
 
                 for m in matchers
 
-                        match = m[1] chars
+                        match = m[1] str
 
                         if match
-
                                 (m[2] or defaultAlter) match[0], stack
-                                chars.splice 0, match[1]
+                                str = str[match[1]..]
                                 break
         if stack.length is 1
                 stack

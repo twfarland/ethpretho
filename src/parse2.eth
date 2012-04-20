@@ -1,0 +1,24 @@
+(:= fs (require "fs"))
+(:= _  (require "./utils.js"))
+
+(:= toStr (. {} toString))
+(:= obArr "[object Array]")
+
+
+; stackMutator :: expr, stack -> _ (mutates stack)
+(:= (defaultAlter expr stack)
+    (:= lower (. stack 0))
+    (if (=== (toStr.call lower) obArr)
+        (lower.push expr)
+        (. (val lower) (push expr))))
+
+(:= (involve expr stack)
+    (try e (, (= expr (stack.take))
+              (defaultAlter expr stack))
+         (throw (new Error (+ "Parse error: " (JSON.stringify stack))))))
+
+(:= (deeper expr stack)
+    (stack.put expr))
+
+
+; matchers :: [[str expressor stackMutator]]

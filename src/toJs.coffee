@@ -1,22 +1,16 @@
-# todo : get all of js primitives. incl switch, try/catch etc
-# parse / compile comments
-# write test suite
-# rewrite in itself
-# write hygenic macro system
+_        = require './help.js'
+parse    = require './parse.js'
+fs       = require 'fs'
+util     = require 'util'
 
-root = @
+root     = @
 
-_      = require './utils.js'
-parse  = require './parse.js'
-fs     = require 'fs'
-util   = require 'util'
-
-toStr = {}.toString
-obArr = '[object Array]'
-obObj = '[object Object]'
-log = _.log
-isInt = /\d+/
-isSymbol = /^[\_|\|$A-z][\_|\|$A-z|\d]*/
+toStr    = _.toStr
+obArr    = _.obArr
+obObj    = _.obObj
+log      = _.log
+isInt    = _.isInt
+isSymbol = _.isSymbol
 
 
 # container
@@ -94,6 +88,9 @@ treeToJs = (extra = {}) ->
 
         # primitive exprs - may need to eval to something depending on p
         prim =
+                'rgx': (e, p, i) -> # (rgx "expr" flag)
+                        '/' + toJs(e[1],'rgx',i) + '/' + toJs(e[2],'rgx',i)
+
                 ':=': (e, p, i) ->
                         if e.length > 2
                                 'var ' + prim['='] e, p, i

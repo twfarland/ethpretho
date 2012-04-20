@@ -4,16 +4,21 @@ _      = require './utils.js'
 parse  = require('./parse.js').parseFile
 treeToJs  = require('./toJs.js').treeToJs
 fs     = require 'fs'
-util   = require 'util'
+
+args = process.argv
 
 
-parse '../tests/exprs.eth', (err, parseTree) ->
+compile = (file) ->
+        parse file, (err, parseTree) ->
+                treeToJs.trans parseTree, (err, jsString) ->
+                        fs.writeFile file.split('.eth')[0] + '.js', jsString, (err) ->
+                                if err
+                                        console.log err
+                                else
+                                        console.log 'Compiled ' + file
 
-        treeToJs.trans parseTree, (err, jsString) ->
 
-                fs.writeFile '../tests/exprs.js', jsString, (err) ->
+root.compile = compile
 
-                        if err
-                                console.log err
-                        else
-                                console.log 'saved'
+if args[2]
+        compile args[2]

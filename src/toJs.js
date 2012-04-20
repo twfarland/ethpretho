@@ -2,9 +2,7 @@
   var fs, isInt, isSymbol, log, obArr, obObj, parse, root, toStr, treeToJs, util, _,
     __indexOf = Array.prototype.indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; };
 
-  root = this;
-
-  _ = require('./utils.js');
+  _ = require('./help.js');
 
   parse = require('./parse.js');
 
@@ -12,17 +10,19 @@
 
   util = require('util');
 
-  toStr = {}.toString;
+  root = this;
 
-  obArr = '[object Array]';
+  toStr = _.toStr;
 
-  obObj = '[object Object]';
+  obArr = _.obArr;
+
+  obObj = _.obObj;
 
   log = _.log;
 
-  isInt = /\d+/;
+  isInt = _.isInt;
 
-  isSymbol = /^[\_|\|$A-z][\_|\|$A-z|\d]*/;
+  isSymbol = _.isSymbol;
 
   treeToJs = function(extra) {
     var argBlock, binaryPr, block, blockCreators, branchers, dualPr, getIndent, getRef, getSemi, iniBlock, isBrancher, k, noWrap, op, openSpace, pairize, prepBranch, prim, sBlock, selfCollect, toJs, unaryPost, unaryPr, v, wrap, _i, _j, _k, _l, _len, _len2, _len3, _len4, _ref, _ref2, _ref3, _ref4;
@@ -125,6 +125,9 @@
       ], p, i), e[0]);
     };
     prim = {
+      'rgx': function(e, p, i) {
+        return '/' + toJs(e[1], 'rgx', i) + '/' + toJs(e[2], 'rgx', i);
+      },
       ':=': function(e, p, i) {
         if (e.length > 2) {
           return 'var ' + prim['='](e, p, i);

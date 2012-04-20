@@ -1,92 +1,12 @@
-1
-"string"
-symbol
-1234.50
-/regex/g
-; comment 
-[1 2 3]
-{a 1 b 2}
-{"a b" 1 "x y" 2}
-(-> (n) (* n 2))
-((-> () ))
-(+ 1 2)
-(- 1)
-(++ x)
-(+ 1 (- 2 -1))
-(+ "a" "b" "c")
-(:= x 1)
-(= x 2)
-(:= (d n) (* n 2))
-(:= (d n) (= n (+ n 1)) (* n 2))
-(, x y z)
-(? x y z)
-(if x y)
-(if x y z)
-(if x y a b)
-(if x y a b c)
-(if x (, y z) (, a b))
-(if x (, y z) y (, a b) (, c d))
-(switch x a b)
-(switch x a b c)
-(switch x a b c d e)
-(switch x a (, b c) d e)
-(switch x a (switch a b c) d) 
-(try e x)
-(try e x y)
-(try e x y z)
-(try e (, x y) (, (x e) (y e)) (z))
-(+ 1 (if x y))
-(+ 1 (if x (, y z) (, a b)))
-(+ 1 (switch x a b))
-(+ 1 (switch x a (switch a b c) d)) 
-(+ 1 (try e x))
-(+ 1 (try e (, x y) (, (x e) (y e)) (z)))
-(-> () (if x y))
-(-> () x (if x y))
-(-> () (if x y) x)
-(-> () (if x (, y z) y (, a b) (if e f g h)))
-(-> () (switch x a b))
-(-> () x (switch x a b))
-(-> () (switch x a b) x)
-(-> () (switch x a (switch a b c) d)) 
-(-> () (try e x))
-(-> () x (try e x))
-(-> () (try e x) x)
-(-> () (try e (, x y) (, (x e) (y e)) (z)))
-(for ((in i x)) (+ j i))
-(for ((= i 0) (< i 10) (++ i)) (+ j i))
-(+ 1 (for ((in i x)) (+ j i)))
-(+ 1 (for ((in i x)) (= y z) (+ j i)))
-(-> () (for ((in i x)) (+ j i)))
-(-> () x (for ((in i x)) (+ j i)))
-(-> () (for ((in i x)) (+ j i)) x)
-(-> () (for ((in i x)) (= y z) (+ j i)))
-(while (> x 1) (y.push x) (-- x))
-(+ 1 (while (> x 1) (y.push x) (-- x)))
-(-> () (while (> x 1) (y.push x) (-- x)))
-(-> () x (while (> x 1) (y.push x) (-- x)))
-(-> () (while (> x 1) (y.push x) (-- x)) x)
-(. x y z)
-(. x 0)
-(. x "y z")
-(. x [0])
-(. x [y])
-(. x ["y z"])
-(. x [(y z)])
-(. x (if a b c))
-(. x [(if a b c)])
-(. x (for () y))
-(. x (y))
-(. x (y 1) (z 2 3) a)
-(. x (0 1))
-(. x ((if a b c) 1))
-(. x ("a" 2))
-(. x [0 1])
-(. x ((y z) 1))
-(. x ([(y z)] 1))
-(. {a 1} a)
-(. [1 2 3] 0)
-(. (if a b c d) (if a b c d))
+"a"
+(+ 1 (y z))
 
-
-      
+   werwer
+    
+   {a 1 b [1 2 3]}
+   
+   ; comment
+   
+   yep
+   
+   (. wat (up yall))

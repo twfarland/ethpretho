@@ -1,25 +1,16 @@
 (function() {
-  var deeper, defaultAlter, fs, involve, makeTree, matchers, obArr, parseFile, root, toStr, _,
-    __indexOf = Array.prototype.indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; };
+  var deeper, defaultAlter, fs, involve, makeTree, matchers, parseFile, root, _;
 
   root = this;
 
   fs = require('fs');
 
-  _ = require('./utils.js');
-
-  Array.prototype.put = Array.prototype.unshift;
-
-  Array.prototype.take = Array.prototype.shift;
-
-  toStr = {}.toString;
-
-  obArr = '[object Array]';
+  _ = require('./help.js');
 
   defaultAlter = function(expr, stack) {
     var lower;
     lower = stack[0];
-    if (toStr.call(lower) === obArr) {
+    if (_.toStr.call(lower) === _.obArr) {
       return lower.push(expr);
     } else {
       return _.val(lower).push(expr);
@@ -28,7 +19,7 @@
 
   involve = function(expr, stack) {
     try {
-      expr = stack.take();
+      expr = stack.shift();
       return defaultAlter(expr, stack);
     } catch (e) {
       throw new Error("Parse error: " + JSON.stringify(stack));
@@ -36,47 +27,31 @@
   };
 
   deeper = function(expr, stack) {
-    return stack.put(expr);
+    return stack.unshift(expr);
   };
 
   matchers = [
     [
       'comment', function(str) {
-        var c, k, res, rest, _len, _ref;
-        if (str[0] === ';') {
-          _ref = ['', str.slice(1)], res = _ref[0], rest = _ref[1];
-          for (k = 0, _len = rest.length; k < _len; k++) {
-            c = rest[k];
-            if (c === '\n') {
-              break;
-            } else {
-              res += c;
-            }
-          }
+        var chomp;
+        chomp = _.isComment.exec(str);
+        if (chomp) {
           return [
             {
-              c: res
-            }, res.length + 2
+              c: chomp[0].slice(1)
+            }, chomp[0].length
           ];
         }
       }
     ], [
       'string', function(str) {
-        var c, k, res, rest, _len, _ref;
-        if (str[0] === '"') {
-          _ref = ['', str.slice(1)], res = _ref[0], rest = _ref[1];
-          for (k = 0, _len = rest.length; k < _len; k++) {
-            c = rest[k];
-            if ((c === '"') && (rest[k - 1] !== '\\')) {
-              break;
-            } else {
-              res += c;
-            }
-          }
+        var chomp;
+        chomp = _.isStr.exec(str);
+        if (chomp) {
           return [
             {
-              s: res
-            }, res.length + 2
+              s: chomp[0].slice(1, -1)
+            }, chomp[0].length
           ];
         }
       }
@@ -117,29 +92,14 @@
         if (str[0] === '}') return [null, 1];
       }, involve
     ], [
-      'line', function(str) {
-        if (str[0] === '\n') return ['\n', 1];
-      }, function(expr, stack) {
-        return false;
-      }
-    ], [
       'space', function(str) {
-        var c, k, res, _len, _ref;
-        if (str[0] === ' ') {
-          res = ' ';
-          _ref = str.slice(1);
-          for (k = 0, _len = _ref.length; k < _len; k++) {
-            c = _ref[k];
-            if (c === ' ') {
-              res += ' ';
-            } else {
-              break;
-            }
-          }
+        var chomp;
+        chomp = _.isSpace.exec(str);
+        if (chomp) {
           return [
             {
-              w: res
-            }, res.length
+              w: chomp[0]
+            }, chomp[0].length
           ];
         }
       }, function(expr, stack) {
@@ -147,33 +107,26 @@
       }
     ], [
       'atom', function(str) {
-        var c, k, next, res, _len;
-        res = '';
-        for (k = 0, _len = str.length; k < _len; k++) {
-          c = str[k];
-          next = str[k + 1];
-          if (next && (__indexOf.call(' \n\t()[]{}"', next) >= 0)) {
-            res += c;
-            break;
-          } else {
-            res += c;
-          }
-        }
-        return [res, res.length];
+        var chomp;
+        chomp = _.isAtom.exec(str);
+        if (chomp) return [chomp[0], chomp[0].length];
+      }
+    ], [
+      'nomatch', function(str) {
+        return [' ', 1];
       }
     ]
   ];
 
   makeTree = function(str, stack) {
-    var chars, m, match, _i, _len;
-    chars = [].slice.call(str);
-    while (chars.length !== 0) {
+    var m, match, _i, _len;
+    while (str.length !== 0) {
       for (_i = 0, _len = matchers.length; _i < _len; _i++) {
         m = matchers[_i];
-        match = m[1](chars);
+        match = m[1](str);
         if (match) {
           (m[2] || defaultAlter)(match[0], stack);
-          chars.splice(0, match[1]);
+          str = str.slice(match[1]);
           break;
         }
       }

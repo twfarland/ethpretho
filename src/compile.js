@@ -1,5 +1,5 @@
 (function() {
-  var fs, parse, root, treeToJs, util, _;
+  var args, compile, fs, parse, root, treeToJs, _;
 
   root = this;
 
@@ -11,18 +11,24 @@
 
   fs = require('fs');
 
-  util = require('util');
+  args = process.argv;
 
-  parse('../tests/exprs.eth', function(err, parseTree) {
-    return treeToJs.trans(parseTree, function(err, jsString) {
-      return fs.writeFile('../tests/exprs.js', jsString, function(err) {
-        if (err) {
-          return console.log(err);
-        } else {
-          return console.log('saved');
-        }
+  compile = function(file) {
+    return parse(file, function(err, parseTree) {
+      return treeToJs.trans(parseTree, function(err, jsString) {
+        return fs.writeFile(file.split('.eth')[0] + '.js', jsString, function(err) {
+          if (err) {
+            return console.log(err);
+          } else {
+            return console.log('Compiled ' + file);
+          }
+        });
       });
     });
-  });
+  };
+
+  root.compile = compile;
+
+  if (args[2]) compile(args[2]);
 
 }).call(this);
