@@ -94,6 +94,7 @@ matchers = [
 # the stack accumulates syntax nodes as the str is consumed
 makeTree = (str, stack) ->
 
+        str += '\n'
 
         until str.length is 0
 

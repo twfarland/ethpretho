@@ -36,7 +36,7 @@ treeToJs = (extra = {}) ->
 
         branchers = ['if', 'switch', 'try']
         blockCreators = branchers.concat ['for', 'while']
-        noWrap = ['=','()','return']
+        noWrap = ['', '=','()','return', 'throw', 'new', 'for']
         openSpace = ['->', '']
 
         isBrancher = (e) ->
@@ -98,7 +98,10 @@ treeToJs = (extra = {}) ->
                                 'var ' + e[1] # todo - handle multiple var defs
 
                 '=': (e, p, i) ->
-                        if toStr.call(e[1]) is obArr
+                        if not e[2]
+                                toJs(e[1], '=', i)
+
+                        else if toStr.call(e[1]) is obArr
 
                                 toJs(e[1][0], '=', i) + ' = ' + toJs(['->', e[1][1..]].concat(e[2..]), '=', i)
                         else
@@ -142,6 +145,9 @@ treeToJs = (extra = {}) ->
                                 '(' + res + ')'
                         else
                                 wrap res, p
+
+                'throw': (e, p, i) ->
+                        'throw ' + toJs(e[1], 'throw', i)
 
                 'return': (e, p, i) ->
                         'return ' + toJs(e[1], 'return', i)
@@ -208,30 +214,51 @@ treeToJs = (extra = {}) ->
 
                         if p in openSpace
 
-                                'while ' + iniBlock([e[1]], '()', i) + ' ' + block(e[2..], '', i)
+                                'while ' + iniBlock([e[1]], 'while', i) + ' ' + block(e[2..], '', i)
                         else
                                 selfCollect e, p, i
 
-                'for': (e, p, i) -> # (for (ini ...) body ...) - just the basic js for
+                'for': (e, p, i) -> # (for (clauses...) body...) - just the basic js for
 
                         if p in openSpace
 
-                                'for ' + iniBlock(e[1], '()', i) + ' ' + block(e[2..], '', i)
+                                'for ' + iniBlock(e[1], 'for', i) + ' ' + block(e[2..], '', i)
                         else
                                 selfCollect e, p, i
 
+                'forIn': (e, p, i) -> # (for-in coll k v body...)
+
+                        coll = e[1]
+                        k    = e[2]
+                        v    = e[3]
+                        body = e[4..]
+
+                        toJs ['for', [['=', k, '0'], ['<', k, ['.', coll, 'length']], ['++', k]], ['=', v, ['.', coll, {a: [k]}]]].concat(body), p, i
 
 
         # put operators into primitives
         binaryPr = (sym) -> (e, p, i) ->
                 wrap (toJs(e_, sym, i) for e_ in e[1..]).join(' ' + sym + ' '), p # always eval to something
 
+        binaryAlwaysWrap = (sym) -> (e, p, i) ->
+                wrap (toJs(e_, sym, i) for e_ in e[1..]).join(' ' + sym + ' '), 'wrap'
+
+        binaryChain = (sym) -> (e, p, i) -> # (x s y && y s b && b s a)
+                if e.length > 3
+
+                        left = e[1]
+                        res  = ['&&']
+
+                        for e_ in e[2..]
+                                res.push [sym, left, e_]
+                                left = e_
+
+                        toJs res, p, i
+                else
+                        wrap (toJs(e[1], sym, i) + ' ' + sym + ' ' + toJs(e[2], sym, i)), p
 
         unaryPost = (sym) -> (e, p, i) ->
-                if p is ''
-                        wrap e[1] + sym, p
-                else
-                        wrap e[1] + sym + ', ' + e[1], p
+                wrap e[1] + sym, p
 
         unaryPr = (sym) -> (e, p, i) ->
                 if e.length < 3
@@ -241,27 +268,20 @@ treeToJs = (extra = {}) ->
 
                 wrap sym + ' ' + toJs(arg, p, i), p
 
-        dualPr = (sym) -> (e, p, i) -> # always eval to something
-                if e.length is 2
-                        wrap sym + e[1], p
-                else
-                        wrap (toJs(e_, sym, i) for e_ in e[1..]).join(' ' + sym + ' '), p
-
-        for op in ['*', '/', '%'
-                   '+=', '*=', '/=', '%=', '+=', '-=', '<<=', '>>=', '>>>=', '&=', '^=', '|='
-                   '==', '!=', '===', '!==', '>', '>=', '<', '<='
-                   'in', 'of', 'instanceof'
-                   '&&', '||', ',']
+        for op in ['+=', '*=', '/=', '%=', '-=', '<<=', '>>=', '>>>=', '&=', '^=', '|=']
                 prim[op] = binaryPr op
+
+        for op in ['*', '/', '%', '+', '-', '&&', '||', ',']
+                prim[op] = binaryAlwaysWrap op
+
+        for op in ['==', '!=', '===', '!==', '>', '>=', '<', '<=','in', 'of', 'instanceof']
+                prim[op] = binaryChain op
 
         for op in ['++','--']
                 prim[op] = unaryPost op
 
         for op in ['typeof', 'new', 'throw', '!']
                 prim[op] = unaryPr op
-
-        for op in ['+', '-']
-                prim[op] = dualPr op
 
         # extend with any extra primitives
         for k, v of extra
@@ -295,11 +315,14 @@ treeToJs = (extra = {}) ->
                         res += ind
                         e = last[0]
 
-                        if isBrancher e
+                        if isBrancher(e)
                                 res += toJs(e, p, i_) + getSemi(e)
 
                         else if p is '->'
-                                res += (toJs ['return', e], p, i_) + getSemi(e)
+                                if e[0] and e[0] is 'throw'
+                                        res += 'throw ' + (toJs e[1], 'throw', i_) + getSemi(e)
+                                else
+                                        res += (toJs ['return', e], p, i_) + getSemi(e)
                         else
                                 res += toJs(e, p, i_) + getSemi(e)
 

@@ -1,34 +1,74 @@
+(. (-> ()
+
 (:= fs (require "fs"))
-(:= _  (require "./utils.js"))
+(:= _  (require "./help.js"))
 
-(:= toStr (. {} toString))
-(:= obArr "[object Array]")
-
+(:= root this)
 
 ; stackMutator :: expr, stack -> _ (mutates stack)
 (:= (defaultAlter expr stack)
     (:= lower (. stack 0))
-    (if (=== (toStr.call lower) obArr)
+    (if (=== (_.toStr.call lower) _.obArr)
         (lower.push expr)
-        (. (val lower) (push expr))))
+        (. (_.val lower) (push expr))))
 
 (:= (involve expr stack)
-    (try e (, (= expr (stack.take))
+    (try e (, (= expr (stack.shift))
               (defaultAlter expr stack))
          (throw (new Error (+ "Parse error: " (JSON.stringify stack))))))
 
 (:= (deeper expr stack)
-    (stack.put expr))
+    (stack.unshift expr))
 
 
-; matchers :: [[str expressor stackMutator]]
+; matchers :: [[str expressor stackMutator]] 
 (:= matchers [
-    ["comment" (-> (str) (if (=== (. str [0]) ";")
-                             (, (:= res "")
-                                (:= rest (. str [0 1]))
-                                (for ((in r rest))
-                                     (:= c (. rest [r]))
-                                     (if (=== c "\n")  break (+= res c)))
-                                [{c res} (+ res.length 2)])))]
-    []
-])
+    ["comment" 
+     (-> (str)  (:= chomp (_.isComment.exec str))
+                (if chomp [{c (. chomp 0 (slice 1))} (. chomp 0 length)]))]
+    ["string"
+     (-> (str)  (:= chomp (_.isStr.exec str))
+                (if chomp [{s (. chomp 0 [1 -1])} (. chomp 0 length)]))]
+    ["space"
+     (-> (str)  (:= chomp (_.isSpace.exec str))
+                (if chomp [{w (. chomp 0)} (. chomp 0 length)]))
+     (-> (expr stack) false)]
+    ["atom"
+     (-> (str)  (:= chomp (_.isAtom.exec str))
+                (if chomp [(. chomp 0) (. chomp 0 length)]))]
+    
+    ["openexp"  (-> (str) (if (=== (. str 0) "(") [[] 1]))     deeper]
+    ["closeexp" (-> (str) (if (=== (. str 0) ")") [null 1]))   involve]
+    ["openarr"  (-> (str) (if (=== (. str 0) "[") [{a []} 1])) deeper]
+    ["closearr" (-> (str) (if (=== (. str 0) "]") [null 1]))   involve]
+    ["openobj"  (-> (str) (if (=== (. str 0) "{") [{o []} 1])) deeper]
+    ["closeobj" (-> (str) (if (=== (. str 0) "}") [null 1]))   involve]
+    ["nomatch"  (-> ()    [" " 1])]])
+
+; makeTree :: str, stack -> stack
+; the stack accumulates syntax nodes as the str is consumed
+(:= (makeTree str stack)
+  
+  (+= str "\n")
+  
+  (while (!== str.length 0)
+         
+         (forIn matchers i m
+              (:= match ((. m 1) str))
+              (if match (, ((|| (. m 2) defaultAlter) (. match 0) stack)
+                           (= str (. str (slice (. match 1))))
+                           break))))
+  
+  (if (=== stack.length 1) stack
+      (throw (new Error (+ "Parse error: " (JSON.stringify stack))))))
+
+
+; parseFile :: string, (err, data -> null) -> null
+(:= (parseFile file callback)
+  (fs.readFile file "utf-8" (-> (err data)
+                                (callback err (makeTree data [[]])))))
+
+
+(= root.parseFile parseFile)
+null  
+) (call this))

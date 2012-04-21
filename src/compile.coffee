@@ -8,6 +8,7 @@ args      = process.argv
 
 
 compile = (file) ->
+
         parse file, (err, parseTree) ->
                 treeToJs.trans parseTree, (err, jsString) ->
                         fs.writeFile file.split('.eth')[0] + '.js', jsString, (err) ->
