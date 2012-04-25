@@ -1,0 +1,305 @@
+(:= fs        (require "fs")
+    util      (require "util")
+    parse     (require "./parse.js")
+    _         (require "./help.js"))
+    
+(:= root      this)
+
+(:= toStr     _.toStr
+    obArr     _.obArr
+    obObj     _.obObj
+    log       _.log
+    isInt     _.isInt
+    isSymbol  _.isSymbol
+    pairize   _.pairize
+    partition _.partition
+    isIn      _.isIn
+    map       _.map
+    each      _.each)
+
+  
+; treeToJs :: {string (expr string number)} -> object
+(:= treeToJs (-> (extra)
+
+        (if (== extra null) (= extra {}))
+
+        (:= branchers     ["if" "try"]
+            blockCreators (branchers.concat ["for" "while"])
+            noWrap        ["" "=" "()" "return" "throw" "new" "for"]
+            openSpace     ["->" ""])
+
+        (:= isFirstIn (-> (set) (-> (e) (&& (. e 0) (isIn (. e 0) set)))))
+        (:= isBrancher     (isFirstIn branchers)
+            isBlockCreator (isFirstIn blockCreators))
+               
+        (:= sBlock (-> (sep) (-> (exprs p i) 
+                (if (=== exprs.length 0) "()"
+                    (+ "(" (. (map exprs (-> (e) (toJs e "()" i))) (join sep)) ")")))))
+
+        (:= argBlock (sBlock ", ")
+            iniBlock (sBlock "; "))
+
+        (:= prepBranch (-> (e)
+                (if (&& (. e 0) (=== (. e 0) ",")) (. e (slice 1)) [e])))
+
+        (:= getIndent (-> (i)
+                (:= res "")
+                (while (> i 1) (+= res "    ") (-- i))
+                res))       
+               
+        (:= getSemi (-> (e)
+                (if (|| (isBlockCreator e) (. e c)) "" ";")))
+
+        (:= getRef (-> (e i) 
+                (if (&& (=== (typeof e) "string") (isSymbol.exec e))
+                        (+ "." e)
+                    (&& (=== (toStr.call e) obObj) (=== (_.key e) "a"))
+                        (+ "[" (toJs (. e a 0) "." i) "]")
+                        (+ "[" (toJs e "." i) "]"))))
+
+        (:= wrap (-> (res p)
+                (if (isIn p noWrap) res (+ "(" res ")"))))
+
+        (:= selfCollect (-> (e p i)
+                (:= pre (e.slice 0 -1)
+                    last (e.slice -1))
+                (wrap (toJs [ ["->" [] 
+                               [":=" "res_" {a []}] 
+                               (pre.concat [["res_.push" (. last 0)]]) "res_"] ] p i) 
+                      (. e 0))))
+
+        ; primitive forms - may need to eval to something depending on p
+        (:= prim {
+
+                ":=" (-> (e p i)
+                        (if (> e.length 2)
+                                (+ "var " ((. prim "=") e p i))
+                                (+ "var " (. e 1))))
+
+                "=" (-> (e p i)
+
+                        (if (! (. e 2))
+                                (toJs (. e 1) "=" i)
+                                
+                                (. (map (pairize (. e (slice 1))) 
+                                        (-> (pair) (+ (toJs (. pair 0) "=" i) " = " (toJs (. pair 1) "=" i)))) 
+                                   (join (+ ",\n" (getIndent i))))))
+                                
+
+                "." (-> (e p i) ; member access, chaining, slices
+
+                        (:= mem (. e 1))
+                        (:= res (toJs mem "." i))
+                        (:= parts (. e (slice 2)))
+
+                        (each parts (-> (part)
+
+                                (if (=== (typeof part) "string") ; atom
+                                         (+= res (getRef part i)) ; [0]  |  .y
+
+                                    (=== (toStr.call part) obArr) ; ()
+
+                                        (if (. prim [(. part 0)])
+                                                 (+= res (+ "[" ((. prim [(. part 0)]) part "." i) "]")) ; x[(true ? 1 : 2)]
+                                                 (+= res (+ (getRef (. part 0) i) (argBlock (. part (slice 1)) "." i)))) ; .x(1, 2, y(z))  |  [z(x)](1,2)
+
+                                    (=== (toStr.call part) obObj)
+  
+                                        (if (=== (_.key part) "s")
+                                                 (+= res (+ "['" part.s "']")) ; ["x y"]
+
+                                            (=== (_.key part) "a")
+                                                 (if (=== part.a.length 2)
+                                                        (+= res (+ ".slice" (argBlock (. part a [0 2]) "slice" i))) ; .slice(0, x(y))
+                                                        (+= res (+ "[" (toJs (. part a 0) "." i) "]")))) ; [x(y)]
+
+                                        (throw (new Error "Invalid reference")))))
+                        res)
+
+                "->" (-> (e p i) ; (-> (p...) body...)
+                        (:= res (+ "function (" (. e 1 (join ", ")) ") " (block (. e (slice 2)) "->" i)))
+                        (if (=== p "") (+ "(" res ")") (wrap res p)))
+
+                "throw" (-> (e p i) (+ "throw " (toJs (. e 1) "throw" i)))
+
+                "return" (-> (e p i) (+ "return " (toJs (. e 1) "return" i)))
+
+                "?" (-> (e p i)
+                        (wrap (+ (toJs (. e 1) "()" i) " ? " (toJs (. e 2) "()" i) " : " (toJs (. e 3) "()" i)) p))
+
+                "if" (-> (e p i) ; (?? (< 2 3) 4 5)
+
+                        (if (isIn p openSpace)
+
+                                (, (:= prd (. e (slice 1)))
+
+                                   (:= res (+ "if (" (toJs (. prd 0) "()" i) ") " (block (prepBranch (. prd 1)) p i)))
+                                   (prd.splice 0 2)
+
+                                   (while (!== prd.length 0)
+
+                                          (if (=== prd.length 1)
+                                              (, (+= res (+ " else " (block (prepBranch (. prd[0])) p i)))
+                                                 (prd.splice 0 1))
+
+                                              (, (+= res (+ " else if (" (toJs (. prd 0) "()" i) ") " (block (prepBranch (. prd 1)) p i)))
+                                                 (prd.splice 0 2))))
+                                   res)
+
+                                (if (=== e.length 4) 
+                                        (toJs (. ["?"] (concat (. e (slice 1)))) p i) ; use ternary
+                                        (wrap (toJs [["->" [] e]] p i) "if")))) ; wrap in self-calling func
+
+                "try" (-> (e p i) ; (try e (, stuff) (, catch) (, finally))
+                        (if (isIn p openSpace)
+
+                                (, (:= res (+ "try " (block (prepBranch (. e 2)) p i)))
+                                   (if (. e 3)
+                                       (+= res (+ " catch (" (toJs (. e 1) "()" i) ") " (block (prepBranch (. e 3)) p i))))
+                                   (if (. e 4)
+                                       (+= res (+ " finally " (block (prepBranch (. e 4)) p i))))
+                                   res)
+
+                                (wrap (toJs [["->" [] e]] p i) "try")))
+
+                "while" (-> (e p i) ; (while clause body ...)
+                          
+                        (if (isIn p openSpace)
+                                (+ "while " (iniBlock [(. e 1)] "while" i) " " (block (. e (slice 2)) "" i))
+                                (selfCollect e p i)))
+
+                "for" (-> (e p i) ; (for (clauses...) body...) - just the basic js for
+
+                        (if (isIn p openSpace)
+                                (+ "for " (iniBlock (. e 1) "for" i) " " (block (. e (slice 2)) "" i))
+                                (selfCollect e p i)))
+                })
+
+
+        ; put operators into primitives
+        (:= binaryPr (-> (sym) (-> (e p i)
+                (wrap (. (map (. e (slice 1)) (-> (e_) (toJs e_ sym i)))
+                         (join (+ " " sym " "))) p))))
+
+        (:= binaryAlwaysWrap (-> (sym) (-> (e p i)                
+                (wrap (. (map (. e (slice 1)) (-> (e_) (toJs e_ sym i)))
+                         (join (+ " " sym " "))) "wrap"))))
+
+        (:= binaryChain (-> (sym) (-> (e p i) ; (x s y && y s b && b s a)
+                (if (> e.length 3)
+                    
+                    (,  (:= left (. e 1)
+                            res  ["&&"])
+
+                        (each (. e (slice 2)) (-> (e_ k) 
+                                                  (res.push [sym left e_])
+                                                  (= left e_)))
+                        (toJs res p i))
+                    
+                    (wrap (+ (toJs (. e 1) sym i) " " sym " " (toJs (. e 2) sym i)) p)))))
+
+        (:= unaryPost (-> (sym) (-> (e p i) (wrap (+ (. e 1) sym) p))))
+
+        (:= unaryPr (-> (sym) (-> (e p i) 
+                (if (< e.length 3)
+                        (:= arg (. e 1))
+                        (:= arg (. e (slice 1))))
+                (wrap (+ sym " " (toJs arg p i)) p))))
+          
+        (:= placePrim (-> (func ls) 
+                          (each ls (-> (op) (= (. prim [op]) (func op))))))
+
+        (placePrim binaryPr         ["+=" "*=" "/=" "%=" "-=" "<<=" ">>=" ">>>=" "&=" "^=" "|="])
+        (placePrim binaryAlwaysWrap ["*" "/" "%" "+" "-" "&&" "||" ","])
+        (placePrim binaryChain      ["==" "!=" "===" "!==" ">" ">=" "<" "<=" "in" "of" "instanceof"])
+        (placePrim unaryPost        ["++" "--"])
+        (placePrim unaryPr          ["typeof" "new" "throw" "!"])   
+
+        ; extend with any extra primitives
+        (each extra (-> (v k) (= (. prim k) v)))
+
+        ; block and toJs are the core convertors
+        (:= block (-> (exprs p i)
+
+                (= i (|| i 0))
+          
+                (:= pre  (exprs.slice 0 -1)
+                    last (exprs.slice -1)
+                    ind  (getIndent i)
+                    i_   (+ i 1) ; incr indentation level for children
+                    res  "{\n")
+
+                (if (> pre.length 0) ; pre elements
+                        (each pre (-> (e)
+                                      (+= res (+ ind (toJs e "" i_) (getSemi e) "\n")))))
+
+                (if (=== last.length 1) ; last element - propagate return if necessary
+                        (,  (+= res ind)
+                            (:= e (. last 0))
+
+                            (if (isBrancher e)
+                                     (+= res (+ (toJs e p i_) (getSemi e)))
+
+                                (=== p "->")
+                                     (if (&& (. e 0) (=== (. e 0) "throw"))
+                                          (+= res (+ "throw " (toJs (. e 1) "throw" i_) (getSemi e)))
+                                          (+= res (+ (toJs ["return" e] p i_) ";")))
+                                     
+                                     (+= res (+ (toJs e p i_) (getSemi e))))))
+
+                (+ res "\n" (getIndent (- i 1)) "}")))
+
+
+        ; p is the parent expression, or '', which is a normal block, or '->', which is a function body
+        ; i is the indentation level, which is increased inside blocks
+        (:= toJs (-> (expr p i)
+                
+                (if (== p null) (= p ""))
+          
+                (if (=== (typeof expr) "string") ; atom
+                        
+                        expr ; base primitive: atom
+
+                    (=== (toStr.call expr) obArr) ; expr
+
+                        (, (:= first (. expr 0))
+                           (if first
+                               (if (. prim [first])
+                                   
+                                   ; primitive expr - go to table for a solution
+                                   ((. prim [first]) expr p i) 
+                                   
+                                   ; user-defined: function call
+                                   (+ (toJs first "" i) (argBlock (. expr (slice 1)) first i))) 
+                               ""))
+                        
+                        ; other
+                        (, (:= exprKey (_.key expr))
+                         
+                           (if 
+                                ; base primitive: string literal
+                                (=== exprKey "s") (+ "\"" expr.s "\"") 
+
+                                ; base primitive: array literal
+                                (=== exprKey "a") (+ "[" (. (map expr.a (-> (e) (toJs e "[]" i))) (join ", ")) "]")
+
+                                ; base primitive: object literal
+                                (=== exprKey "o") (, (:= pairs (pairize expr.o))
+                                       (+ "{" (. (map pairs (-> (pair) 
+                                                                (+ (toJs (. pair 0) "{}" i) ": " (toJs (. pair 1) "{}" i)))) 
+                                                 (join ", "))"}"))
+                                ; comment
+                                (=== exprKey "c") (+ "//" expr.c)
+                           
+                                ; unhandled case
+                                    (throw (new Error (+ "Unhandled case: " (util.inspect expr)))))))))
+
+        (= this.toJs toJs)
+        (= this.block block)
+        (= this.trans (-> (tree callback)
+           (callback null (. (block (. tree 0) "" 0) (slice 2 -1)))))
+
+        this))
+
+
+(= root.treeToJs (new (treeToJs)))

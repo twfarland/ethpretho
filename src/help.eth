@@ -1,0 +1,91 @@
+(:= fs            (require "fs")
+    util          (require "util"))
+
+(:= objProto      Object.prototype
+    arrProto      Array.prototype)
+
+(:= nativeForEach arrProto.forEach
+    nativeMap     arrProto.map)
+
+(:= _ this)
+
+(= _.log (-> (n) (console.log (util.inspect n false null))))
+
+(= _.eq (-> (x y)
+            (=== (JSON.stringify x)
+                 (JSON.stringify y))))
+
+(= _.key (-> (obj)
+             (:= k)
+             (for ((in k obj))
+                  (if (obj.hasOwnProperty k) (return k)))
+             null))
+
+(= _.val (-> (obj)
+             (:= k)
+             (for ((in k obj))
+                  (if (obj.hasOwnProperty k) (return (. obj [k]))))
+             null))
+
+(= _.assert (-> (mode) (-> (x y)
+
+       (if (=== mode "-v")
+               (if (eq x y) (log ["Pass" x y])
+                            (log ["Fail" x y]))
+
+               (log (eq x y))))))
+
+(= _.toStr     objProto.toString)
+(= _.obArr     "[object Array]")
+(= _.obObj     "[object Object]") ; to do - test regexes
+(= _.isComment /^;.*/ )
+(= _.isStr     /^\"(([^\\]*?|(\\.))*?)\"/ )
+(= _.isSpace   /^\s+/ )
+(= _.isAtom    /^[^\;\"\n\t\(\)\[\]\{\}\s]+/ )
+(= _.isInt     /\d+/ )
+(= _.isSymbol  /^[\_|\|$A-z][\_|\|$A-z|\d]*/ )
+(= _.isRegex   /^\/([^\\]*?|(\\.))*?\/[img]*/ )
+
+
+(= _.isIn (-> (e arr) (>= (arr.indexOf e) 0)))
+
+(= _.map (-> (ls f ctx)
+
+        (if (&& nativeMap (=== nativeMap ls.map))
+            (ls.map f ctx)
+
+            (, (:= res []
+                   k   0
+                   len ls.length)
+
+               (for ((= k 0) (< k len) (++ k))
+                    (res.push (f.call ctx (. ls [k]) k ls)))
+
+               res))))
+
+(= _.each (-> (ls f ctx)
+
+        (if (&& nativeForEach (=== ls.forEach nativeForEach))
+            (ls.forEach f ctx)
+            (for ((in k ls)) (f.call ctx (. ls [k]) k ls)))))
+
+(= _.pairize (-> (arr)
+
+        (:= odd false
+            res [])
+
+        (_.each arr (-> (v k)
+                      (if odd
+                          (, (res.push [(. arr [(- k 1)]) v])
+                             (= odd false))
+                          (= odd true))))
+        res))
+
+(= _.partition (-> (test arr)
+        (:= pass []
+            fail [])
+
+        (_.each arr (-> (a)
+                        (if (test a) (pass.push a)
+                                     (fail.push a))))
+        [pass fail]))

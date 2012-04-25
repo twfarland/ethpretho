@@ -29,7 +29,7 @@ if (chomp) {
 var chomp = (_.isRegex.exec(str) || _.isAtom.exec(str));
 if (chomp) {
     return [chomp[0], chomp[0].length];
-}
+} else { return null; }
 })], ["comment", (function (str) {
 var chomp = _.isComment.exec(str);
 if (chomp) {

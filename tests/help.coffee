@@ -25,4 +25,9 @@ console.log(
         _.isStr.exec('\n "wat"') is null
         _.isStr.exec('"a"') isnt null
         _.isStr.exec('"./help.js"\n                ))\n(:= obArr "[object Array]"\n  )')[0] is '"./help.js"'
+        _.isRegex.exec('/^\/([^\\]*?|(\\.))*?\/[img]*/g') isnt null
+        _.isRegex.exec('/^\"(([^\\]*?|(\\.))*?)\"/') isnt null
+        _.isRegex.exec('/wat(') is null
+        _.isRegex.exec('  wat') is null
+        _.isRegex.exec('wat') is null
 )

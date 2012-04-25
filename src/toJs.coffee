@@ -5,54 +5,32 @@ util     = require 'util'
 
 root     = @
 
-toStr    = _.toStr
-obArr    = _.obArr
-obObj    = _.obObj
-log      = _.log
-isInt    = _.isInt
-isSymbol = _.isSymbol
-
+toStr     = _.toStr
+obArr     = _.obArr
+obObj     = _.obObj
+log       = _.log
+isInt     = _.isInt
+isSymbol  = _.isSymbol
+pairize   = _.pairize
+partition = _.partition
+isIn      = _.isIn
+map       = _.map
+each      = _.each
 
 # container
-treeToJs = (extra = {}) ->
+treeToJs = (extra) ->
 
-        getIndent = (i) ->
-                res = ''
-                until i < 1
-                        res += '    '
-                        i--
-                res
-
-        pairize = (arr) ->
-                odd = false
-                res = []
-                for v, k in arr
-                        if odd
-                                res.push [arr[k-1], v]
-                                odd = false
-                        else
-                                odd = true
-                res
+        extra = extra or {}
 
         branchers = ['if', 'switch', 'try']
         blockCreators = branchers.concat ['for', 'while']
         noWrap = ['', '=','()','return', 'throw', 'new', 'for']
         openSpace = ['->', '']
 
-        isBrancher = (e) ->
-                e[0] and e[0] in branchers
+        isFirstIn = (set) -> (e) -> e[0] and (e[0] in set)
 
-        prepBranch = (e) -> # rewrite
-                if e[0] and (e[0] is ',')
-                        e[1..]
-                else
-                        [e]
-
-        getSemi = (e) ->
-                if (e[0] and (e[0] in blockCreators)) or e.c
-                        ''
-                else
-                        ';'
+        isBrancher = isFirstIn branchers
+        isBlockCreator = isFirstIn blockCreators
 
         sBlock = (sep) -> (exprs, p, i) ->
                 if exprs.length is 0
@@ -61,8 +39,26 @@ treeToJs = (extra = {}) ->
                         '(' + (toJs e, '()', i for e in exprs).join(sep) + ')'
 
         argBlock = sBlock ', '
-
         iniBlock = sBlock '; '
+
+        prepBranch = (e) -> # rewrite
+                if e[0] and (e[0] is ',')
+                        e[1..]
+                else
+                        [e]
+
+        getIndent = (i) ->
+                res = ''
+                until i < 1
+                        res += '    '
+                        i--
+                res
+
+        getSemi = (e) ->
+                if isBlockCreator(e) or e.c
+                        ''
+                else
+                        ';'
 
         getRef = (e, i) ->
                 if (typeof e is 'string') and isSymbol.exec(e)
@@ -88,24 +84,18 @@ treeToJs = (extra = {}) ->
 
         # primitive exprs - may need to eval to something depending on p
         prim =
-                'rgx': (e, p, i) -> # (rgx "expr" flag)
-                        '/' + toJs(e[1],'rgx',i) + '/' + toJs(e[2],'rgx',i)
-
                 ':=': (e, p, i) ->
                         if e.length > 2
                                 'var ' + prim['='] e, p, i
                         else
-                                'var ' + e[1] # todo - handle multiple var defs
+                                'var ' + e[1]
 
                 '=': (e, p, i) ->
                         if not e[2]
                                 toJs(e[1], '=', i)
-
-                        else if toStr.call(e[1]) is obArr
-
-                                toJs(e[1][0], '=', i) + ' = ' + toJs(['->', e[1][1..]].concat(e[2..]), '=', i)
                         else
-                                toJs(e[1], '=', i) + ' = ' + toJs(e[2], '=', i)
+                                pairs = pairize e[1..]
+                                (toJs(pair[0], '=', i) + ' = ' + toJs(pair[1], '=', i) for pair in pairs).join(',\n' + getIndent(i))
 
                 '.': (e, p, i) -> # member access, chaining, slices
 
@@ -181,21 +171,6 @@ treeToJs = (extra = {}) ->
                                         # wrap in self-calling func
                                         wrap (toJs [['->', [], e]], p, i), 'if'
 
-                'switch': (e, p, i) -> # rewrite as an 'if' to avoid handling weird block semantics of switch
-
-                        res = ['if']
-                        match = e[1]
-                        prd = e[2..]
-
-                        until prd.length is 0
-
-                                if prd.length is 1
-                                        res.push prd[0] # default case
-                                        prd.splice 0, 1
-                                else
-                                        res = res.concat [['===', match, prd[0]], prd[1]]
-                                        prd.splice 0, 2
-                        toJs res, p, i
 
                 'try': (e, p, i) -> # (try e (, stuff) (, catch) (, finally))
 
@@ -225,15 +200,6 @@ treeToJs = (extra = {}) ->
                                 'for ' + iniBlock(e[1], 'for', i) + ' ' + block(e[2..], '', i)
                         else
                                 selfCollect e, p, i
-
-                'forIn': (e, p, i) -> # (for-in coll k v body...)
-
-                        coll = e[1]
-                        k    = e[2]
-                        v    = e[3]
-                        body = e[4..]
-
-                        toJs ['for', [['=', k, '0'], ['<', k, ['.', coll, 'length']], ['++', k]], ['=', v, ['.', coll, {a: [k]}]]].concat(body), p, i
 
 
         # put operators into primitives
@@ -268,20 +234,15 @@ treeToJs = (extra = {}) ->
 
                 wrap sym + ' ' + toJs(arg, p, i), p
 
-        for op in ['+=', '*=', '/=', '%=', '-=', '<<=', '>>=', '>>>=', '&=', '^=', '|=']
-                prim[op] = binaryPr op
+        placePrim = (func, ls) ->
+                for op in ls
+                        prim[op] = func op
 
-        for op in ['*', '/', '%', '+', '-', '&&', '||', ',']
-                prim[op] = binaryAlwaysWrap op
-
-        for op in ['==', '!=', '===', '!==', '>', '>=', '<', '<=','in', 'of', 'instanceof']
-                prim[op] = binaryChain op
-
-        for op in ['++','--']
-                prim[op] = unaryPost op
-
-        for op in ['typeof', 'new', 'throw', '!']
-                prim[op] = unaryPr op
+        placePrim binaryPr, ["+=", "*=", "/=", "%=", "-=", "<<=", ">>=", ">>>=", "&=", "^=", "|="]
+        placePrim binaryAlwaysWrap, ["*", "/", "%", "+", "-", "&&", "||", ","]
+        placePrim binaryChain, ["==", "!=", "===", "!==", ">", ">=", "<", "<=", "in", "of", "instanceof"]
+        placePrim unaryPost, ["++", "--"]
+        placePrim unaryPr, ["typeof", "new", "throw", "!"]
 
         # extend with any extra primitives
         for k, v of extra

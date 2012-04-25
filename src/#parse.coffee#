@@ -1,11 +1,10 @@
-fs = require 'fs'
-_  = require './help.js'
+(:= fs (require "fs"))
+(:= _  (require "./help.js"))
 
-root  = @
+(:= root this)
 
-
-# stackMutator :: expr, stack -> _ (mutates stack)
-defaultAlter = (expr, stack) ->
+; stackMutator :: expr, stack -> _ (mutates stack)
+(:= (defaultAlter = (expr, stack) ->
         lower = stack[0]
         if _.toStr.call(lower) is _.obArr
                 lower.push expr

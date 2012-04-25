@@ -1,5 +1,5 @@
 (function() {
-  var fs, isInt, isSymbol, log, obArr, obObj, parse, root, toStr, treeToJs, util, _,
+  var each, fs, isIn, isInt, isSymbol, log, map, obArr, obObj, pairize, parse, partition, root, toStr, treeToJs, util, _,
     __indexOf = Array.prototype.indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; };
 
   _ = require('./help.js');
@@ -24,56 +24,31 @@
 
   isSymbol = _.isSymbol;
 
+  pairize = _.pairize;
+
+  partition = _.partition;
+
+  isIn = _.isIn;
+
+  map = _.map;
+
+  each = _.each;
+
   treeToJs = function(extra) {
-    var argBlock, binaryAlwaysWrap, binaryChain, binaryPr, block, blockCreators, branchers, getIndent, getRef, getSemi, iniBlock, isBrancher, k, noWrap, op, openSpace, pairize, prepBranch, prim, sBlock, selfCollect, toJs, unaryPost, unaryPr, v, wrap, _i, _j, _k, _l, _len, _len2, _len3, _len4, _len5, _m, _ref, _ref2, _ref3, _ref4, _ref5;
-    if (extra == null) extra = {};
-    getIndent = function(i) {
-      var res;
-      res = '';
-      while (!(i < 1)) {
-        res += '    ';
-        i--;
-      }
-      return res;
-    };
-    pairize = function(arr) {
-      var k, odd, res, v, _len;
-      odd = false;
-      res = [];
-      for (k = 0, _len = arr.length; k < _len; k++) {
-        v = arr[k];
-        if (odd) {
-          res.push([arr[k - 1], v]);
-          odd = false;
-        } else {
-          odd = true;
-        }
-      }
-      return res;
-    };
+    var argBlock, binaryAlwaysWrap, binaryChain, binaryPr, block, blockCreators, branchers, getIndent, getRef, getSemi, iniBlock, isBlockCreator, isBrancher, isFirstIn, k, noWrap, openSpace, placePrim, prepBranch, prim, sBlock, selfCollect, toJs, unaryPost, unaryPr, v, wrap;
+    extra = extra || {};
     branchers = ['if', 'switch', 'try'];
     blockCreators = branchers.concat(['for', 'while']);
     noWrap = ['', '=', '()', 'return', 'throw', 'new', 'for'];
     openSpace = ['->', ''];
-    isBrancher = function(e) {
-      var _ref;
-      return e[0] && (_ref = e[0], __indexOf.call(branchers, _ref) >= 0);
+    isFirstIn = function(set) {
+      return function(e) {
+        var _ref;
+        return e[0] && (_ref = e[0], __indexOf.call(set, _ref) >= 0);
+      };
     };
-    prepBranch = function(e) {
-      if (e[0] && (e[0] === ',')) {
-        return e.slice(1);
-      } else {
-        return [e];
-      }
-    };
-    getSemi = function(e) {
-      var _ref;
-      if ((e[0] && (_ref = e[0], __indexOf.call(blockCreators, _ref) >= 0)) || e.c) {
-        return '';
-      } else {
-        return ';';
-      }
-    };
+    isBrancher = isFirstIn(branchers);
+    isBlockCreator = isFirstIn(blockCreators);
     sBlock = function(sep) {
       return function(exprs, p, i) {
         var e;
@@ -94,6 +69,29 @@
     };
     argBlock = sBlock(', ');
     iniBlock = sBlock('; ');
+    prepBranch = function(e) {
+      if (e[0] && (e[0] === ',')) {
+        return e.slice(1);
+      } else {
+        return [e];
+      }
+    };
+    getIndent = function(i) {
+      var res;
+      res = '';
+      while (!(i < 1)) {
+        res += '    ';
+        i--;
+      }
+      return res;
+    };
+    getSemi = function(e) {
+      if (isBlockCreator(e) || e.c) {
+        return '';
+      } else {
+        return ';';
+      }
+    };
     getRef = function(e, i) {
       if ((typeof e === 'string') && isSymbol.exec(e)) {
         return '.' + e;
@@ -136,12 +134,20 @@
         }
       },
       '=': function(e, p, i) {
+        var pair, pairs;
         if (!e[2]) {
           return toJs(e[1], '=', i);
-        } else if (toStr.call(e[1]) === obArr) {
-          return toJs(e[1][0], '=', i) + ' = ' + toJs(['->', e[1].slice(1)].concat(e.slice(2)), '=', i);
         } else {
-          return toJs(e[1], '=', i) + ' = ' + toJs(e[2], '=', i);
+          pairs = pairize(e.slice(1));
+          return ((function() {
+            var _i, _len, _results;
+            _results = [];
+            for (_i = 0, _len = pairs.length; _i < _len; _i++) {
+              pair = pairs[_i];
+              _results.push(toJs(pair[0], '=', i) + ' = ' + toJs(pair[1], '=', i));
+            }
+            return _results;
+          })()).join(',\n' + getIndent(i));
         }
       },
       '.': function(e, p, i) {
@@ -216,22 +222,6 @@
           }
         }
       },
-      'switch': function(e, p, i) {
-        var match, prd, res;
-        res = ['if'];
-        match = e[1];
-        prd = e.slice(2);
-        while (prd.length !== 0) {
-          if (prd.length === 1) {
-            res.push(prd[0]);
-            prd.splice(0, 1);
-          } else {
-            res = res.concat([['===', match, prd[0]], prd[1]]);
-            prd.splice(0, 2);
-          }
-        }
-        return toJs(res, p, i);
-      },
       'try': function(e, p, i) {
         var res;
         if (__indexOf.call(openSpace, p) >= 0) {
@@ -258,22 +248,6 @@
         } else {
           return selfCollect(e, p, i);
         }
-      },
-      'forIn': function(e, p, i) {
-        var body, coll, k, v;
-        coll = e[1];
-        k = e[2];
-        v = e[3];
-        body = e.slice(4);
-        return toJs([
-          'for', [['=', k, '0'], ['<', k, ['.', coll, 'length']], ['++', k]], [
-            '=', v, [
-              '.', coll, {
-                a: [k]
-              }
-            ]
-          ]
-        ].concat(body), p, i);
       }
     };
     binaryPr = function(sym) {
@@ -340,37 +314,26 @@
         return wrap(sym + ' ' + toJs(arg, p, i), p);
       };
     };
-    _ref = ['+=', '*=', '/=', '%=', '-=', '<<=', '>>=', '>>>=', '&=', '^=', '|='];
-    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-      op = _ref[_i];
-      prim[op] = binaryPr(op);
-    }
-    _ref2 = ['*', '/', '%', '+', '-', '&&', '||', ','];
-    for (_j = 0, _len2 = _ref2.length; _j < _len2; _j++) {
-      op = _ref2[_j];
-      prim[op] = binaryAlwaysWrap(op);
-    }
-    _ref3 = ['==', '!=', '===', '!==', '>', '>=', '<', '<=', 'in', 'of', 'instanceof'];
-    for (_k = 0, _len3 = _ref3.length; _k < _len3; _k++) {
-      op = _ref3[_k];
-      prim[op] = binaryChain(op);
-    }
-    _ref4 = ['++', '--'];
-    for (_l = 0, _len4 = _ref4.length; _l < _len4; _l++) {
-      op = _ref4[_l];
-      prim[op] = unaryPost(op);
-    }
-    _ref5 = ['typeof', 'new', 'throw', '!'];
-    for (_m = 0, _len5 = _ref5.length; _m < _len5; _m++) {
-      op = _ref5[_m];
-      prim[op] = unaryPr(op);
-    }
+    placePrim = function(func, ls) {
+      var op, _i, _len, _results;
+      _results = [];
+      for (_i = 0, _len = ls.length; _i < _len; _i++) {
+        op = ls[_i];
+        _results.push(prim[op] = func(op));
+      }
+      return _results;
+    };
+    placePrim(binaryPr, ["+=", "*=", "/=", "%=", "-=", "<<=", ">>=", ">>>=", "&=", "^=", "|="]);
+    placePrim(binaryAlwaysWrap, ["*", "/", "%", "+", "-", "&&", "||", ","]);
+    placePrim(binaryChain, ["==", "!=", "===", "!==", ">", ">=", "<", "<=", "in", "of", "instanceof"]);
+    placePrim(unaryPost, ["++", "--"]);
+    placePrim(unaryPr, ["typeof", "new", "throw", "!"]);
     for (k in extra) {
       v = extra[k];
       prim[k] = v;
     }
     block = function(exprs, p, i) {
-      var e, i_, ind, last, pre, res, _len6, _n;
+      var e, i_, ind, last, pre, res, _i, _len;
       if (i == null) i = 0;
       pre = exprs.slice(0, -1);
       last = exprs.slice(-1);
@@ -378,8 +341,8 @@
       i_ = i + 1;
       res = '{\n';
       if (pre.length > 0) {
-        for (_n = 0, _len6 = pre.length; _n < _len6; _n++) {
-          e = pre[_n];
+        for (_i = 0, _len = pre.length; _i < _len; _i++) {
+          e = pre[_i];
           res += ind + toJs(e, '', i_) + getSemi(e) + '\n';
         }
       }
@@ -422,11 +385,11 @@
           return '"' + expr.s + '"';
         } else if (exprKey === 'a') {
           return '[' + ((function() {
-            var _len6, _n, _ref6, _results;
-            _ref6 = expr.a;
+            var _i, _len, _ref, _results;
+            _ref = expr.a;
             _results = [];
-            for (_n = 0, _len6 = _ref6.length; _n < _len6; _n++) {
-              e = _ref6[_n];
+            for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+              e = _ref[_i];
               _results.push(toJs(e, '[]', i));
             }
             return _results;
@@ -434,10 +397,10 @@
         } else if (exprKey === 'o') {
           pairs = pairize(expr.o);
           return '{' + ((function() {
-            var _len6, _n, _results;
+            var _i, _len, _results;
             _results = [];
-            for (_n = 0, _len6 = pairs.length; _n < _len6; _n++) {
-              pair = pairs[_n];
+            for (_i = 0, _len = pairs.length; _i < _len; _i++) {
+              pair = pairs[_i];
               _results.push(toJs(pair[0], '{}', i) + ': ' + toJs(pair[1], '{}', i));
             }
             return _results;
