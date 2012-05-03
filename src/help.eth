@@ -27,14 +27,6 @@
                   (if (obj.hasOwnProperty k) (return (. obj [k]))))
              null))
 
-(= _.assert (-> (mode) (-> (x y)
-
-       (if (=== mode "-v")
-               (if (eq x y) (log ["Pass" x y])
-                            (log ["Fail" x y]))
-
-               (log (eq x y))))))
-
 (= _.toStr     objProto.toString)
 (= _.obArr     "[object Array]")
 (= _.obObj     "[object Object]") ; to do - test regexes
